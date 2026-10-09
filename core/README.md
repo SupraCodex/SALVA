@@ -24,12 +24,13 @@ The P3 adapter signatures are deliberately stable:
   `rationale_codes`.
 
 `SimulationEngine(model, params).run(lot, options, n_draws=2_000, seed=42)` is the
-convenience API that creates the shocks and calls the same adapter.
+convenience API that creates the shocks and calls the same adapter. `n_draws` is configurable
+from 100 to 20,000, as specified by the design document.
 
 ## What is calculated
 
 1. **Common random numbers:** one seeded shock bundle is reused for every route. Production
-   runs use at least 1,000 draws (2,000 by default); a run is deterministic for a given
+   runs accept 100–20,000 draws (2,000 by default); a run is deterministic for a given
    model, lot, options, parameter file, draw count, and seed.
 2. **Loss and recoverable quantity:** the selected `LossModel.sample_loss(features, u)` is
    the only source of loss draws. Recoverable kg are full-price-equivalent kg, not a claim

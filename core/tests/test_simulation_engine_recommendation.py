@@ -69,18 +69,25 @@ def test_engine_facade_uses_same_seed_and_defaults():
     assert [r.as_dict() for r in a] == [r.as_dict() for r in b]
 
 
-def test_run_all_rejects_fewer_than_one_thousand_draws():
+def test_engine_facade_accepts_minimum_one_hundred_draws():
     p, lot, options = inputs()
-    full = draw(1_000, 11)
+    facade = SimulationEngine(MonotoneLossModel(), p)
+    results = facade.run(lot, options, n_draws=100, seed=11)
+    assert results
+
+
+def test_run_all_rejects_fewer_than_one_hundred_draws():
+    p, lot, options = inputs()
+    full = draw(100, 11)
     short = replace(
         full,
-        temp=full.temp[:999],
-        transit=full.transit[:999],
-        price=full.price[:999],
-        absorb=full.absorb[:999],
-        u=full.u[:999],
+        temp=full.temp[:99],
+        transit=full.transit[:99],
+        price=full.price[:99],
+        absorb=full.absorb[:99],
+        u=full.u[:99],
     )
-    with pytest.raises(ValueError, match="at least 1000"):
+    with pytest.raises(ValueError, match="at least 100"):
         run_all(MonotoneLossModel(), lot, options, short, p)
 
 

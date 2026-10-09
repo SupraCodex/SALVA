@@ -63,10 +63,15 @@ def test_draw_is_seeded_bounded_and_uses_common_length():
     assert np.std(a.temp) == pytest.approx(1.5, rel=0.07)
 
 
-@pytest.mark.parametrize("n", [0, 999, 20_001, 3.5, True])
+@pytest.mark.parametrize("n", [0, 99, 20_001, 3.5, True])
 def test_draw_rejects_invalid_draw_count(n):
     with pytest.raises(ShockValidationError):
         draw(n, 42)
+
+
+@pytest.mark.parametrize("n", [100, 20_000])
+def test_draw_accepts_configured_boundary_counts(n):
+    assert draw(n, 42).u.shape == (n,)
 
 
 @pytest.mark.parametrize("seed", [-1, 1.2, True])

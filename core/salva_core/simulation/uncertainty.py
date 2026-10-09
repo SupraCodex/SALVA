@@ -9,7 +9,7 @@ import numpy as np
 from ..contracts import Shocks
 
 DEFAULT_DRAWS = 2_000
-MIN_DRAWS = 1_000
+MIN_DRAWS = 100
 MAX_DRAWS = 20_000
 TEMPERATURE_SIGMA_C = 1.5
 TRANSIT_LOG_SIGMA = 0.2
