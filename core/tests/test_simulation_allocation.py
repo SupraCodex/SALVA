@@ -80,6 +80,25 @@ def test_unprofitable_surplus_is_explicitly_discarded(params):
     assert plan.objective_fcfa == pytest.approx(0.0)
 
 
+def test_high_storage_tariff_can_make_storage_route_unprofitable(params):
+    store = Option(
+        "store",
+        "store",
+        10.0,
+        Market(1, "Market", 100.0, 100.0),
+        is_store=True,
+        storage_mode="ambient_shade",
+        hold_h=48.0,
+        storage_cost_fcfa_kg_day=60.0,
+    )
+
+    plan = optimize(10.0, [store], [1.0], params)
+
+    assert plan.discarded_kg == pytest.approx(10.0)
+    assert plan.allocated_kg == pytest.approx(0.0)
+    assert plan.objective_fcfa == pytest.approx(0.0)
+
+
 def test_inconsistent_same_market_metadata_is_rejected(params):
     options = [
         opt("a", Market(1, "Market", 100.0, 20.0)),

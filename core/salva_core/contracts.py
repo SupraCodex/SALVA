@@ -63,6 +63,7 @@ class Option:
     hold_h: float | None = (
         None  # storage duration; None preserves legacy store semantics
     )
+    storage_cost_fcfa_kg_day: float = 0.0  # storage tariff, FCFA per physical kg-day
 
 
 @dataclass(frozen=True)

@@ -124,6 +124,38 @@ def test_route_capacity_may_exceed_lot_without_creating_extra_quantity():
     assert result.cost_p50 == pytest.approx(20.0)
 
 
+def test_storage_tariff_is_charged_per_physical_kg_and_day():
+    params, lot, option, shocks = base_inputs(absorption=100.0)
+    store = replace(
+        option,
+        action="store",
+        is_store=True,
+        storage_mode="ambient_shade",
+        hold_h=48.0,
+        storage_cost_fcfa_kg_day=3.0,
+    )
+
+    result = evaluate(FixedLossModel(), lot, store, shocks, params)
+
+    # 10 physical kg * (2 FCFA/kg route cost + 3 * 2 days storage).
+    assert result.cost_p50 == pytest.approx(80.0)
+    assert result.net_p50 == pytest.approx(result.gross_value_p50 - 80.0)
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"storage_cost_fcfa_kg_day": -1.0}, "finite and >= 0"),
+        ({"storage_cost_fcfa_kg_day": float("inf")}, "finite and >= 0"),
+        ({"storage_cost_fcfa_kg_day": 1.0}, "requires storage"),
+    ],
+)
+def test_storage_tariff_rejects_invalid_or_nonstorage_use(changes, message):
+    params, lot, option, shocks = base_inputs()
+    with pytest.raises(EconomicsError, match=message):
+        evaluate(FixedLossModel(), lot, replace(option, **changes), shocks, params)
+
+
 def test_loss_model_contract_violation_is_rejected():
     params, lot, option, shocks = base_inputs()
     with pytest.raises(EconomicsError, match="loss fractions"):

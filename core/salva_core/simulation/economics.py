@@ -92,6 +92,19 @@ def validate_option(lot: Lot, option: Option) -> None:
         hold_h = _finite_nonnegative(option.hold_h, f"option {option.id}.hold_h")
         if hold_h > 0 and not option.is_store:
             raise EconomicsError(f"option {option.id}.hold_h > 0 requires storage")
+    storage_rate = _finite_nonnegative(
+        option.storage_cost_fcfa_kg_day,
+        f"option {option.id}.storage_cost_fcfa_kg_day",
+    )
+    if storage_rate > 0:
+        if not option.is_store:
+            raise EconomicsError(
+                f"option {option.id}.storage_cost_fcfa_kg_day requires storage"
+            )
+        if option_durations(option)[1] <= 0:
+            raise EconomicsError(
+                f"option {option.id}.storage_cost_fcfa_kg_day requires hold_h > 0"
+            )
     if not isfinite(float(option.temp_offset)):
         raise EconomicsError(f"option {option.id}.temp_offset must be finite")
     if option.action == "store" and not option.is_store:
@@ -267,8 +280,10 @@ def evaluate_portfolio(
         extrapolation_warnings.update(od.extrapolation_warnings)
         y = qty * od.value_fraction
         recoverable += y
-        cost_total += qty * option.cost
         detour_h, hold_h = option_durations(option)
+        cost_total += qty * (
+            option.cost + option.storage_cost_fcfa_kg_day * hold_h / 24.0
+        )
         weighted_extra_h += qty * detour_h
         weighted_hold_h += qty * hold_h
         temperature_mean = (
