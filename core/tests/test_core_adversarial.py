@@ -8,12 +8,13 @@ import numpy as np
 import pytest
 import yaml
 from salva_core import features
-from salva_core.contracts import Lot, Market, Option
+from salva_core.contracts import Lot, Market, Option, Shocks
 from salva_core.loss_model import KineticLossModel
 from salva_core.loss_model.lgbm_model import QUANTILES, LightGbmLossModel
 from salva_core.params import ParamsError, load_product, load_products
 from salva_core.recommendation import recommend
 from salva_core.simulation import SimulationEngine, analyze_sensitivity
+from salva_core.simulation.engine import run_all
 
 
 @pytest.fixture(scope="module")
@@ -138,6 +139,39 @@ def test_lightgbm_artifact_ranges_override_planning_envelope(p):
     assert model.extrapolated_features(f) == ()
     f_outside = features.with_changes(f, p, temp_mean_c=43.0)
     assert model.extrapolated_features(f_outside) == ("temp_mean_c",)
+
+
+@pytest.mark.parametrize(
+    ("temp_c", "artifact_max", "expected_warnings"),
+    [
+        (41.0, 42.0, ()),
+        (40.0, 39.0, ("temp_mean_c",)),
+    ],
+)
+def test_scenario_warnings_follow_active_artifact_ranges(
+    p, temp_c, artifact_max, expected_warnings
+):
+    lot = Lot(10.0, "breaker", "crate", 0.0, 0.0, temp_c)
+    option = Option("continue", "continue", 10.0, Market(1, "Local", 100.0, 100.0))
+    model = LightGbmLossModel(
+        {q: ConstantBooster(q) for q in QUANTILES},
+        p,
+        "artifact-ranged",
+        metadata={
+            "calibration_ranges": {"temp_mean_c": {"min": 6.0, "max": artifact_max}}
+        },
+    )
+    shocks = Shocks(
+        temp=np.zeros(1_000),
+        transit=np.ones(1_000),
+        price=np.ones(1_000),
+        absorb=np.ones(1_000),
+        u=np.full(1_000, 0.5),
+    )
+
+    result = run_all(model, lot, [option], shocks, p, include_allocation=False)[0]
+
+    assert result.extrapolation_warnings == expected_warnings
 
 
 def test_lightgbm_rejects_malformed_artifact_calibration_ranges(p):

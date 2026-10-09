@@ -195,9 +195,7 @@ class LightGbmLossModel:
         age_bounds = self.calibration_ranges.get("age_h")
         if age_bounds is None or current_age > age_bounds["max"]:
             return None
-        baseline = with_changes(
-            f, self.params, remaining_transit_h=0.0, delay_h=0.0
-        )
+        baseline = with_changes(f, self.params, remaining_transit_h=0.0, delay_h=0.0)
         if self.extrapolated_features(baseline):
             return None
         threshold = self.params.shelf_life_loss_threshold

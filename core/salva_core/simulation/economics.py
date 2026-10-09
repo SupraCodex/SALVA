@@ -164,13 +164,19 @@ def option_draws(
                     "non-negative scalar or None"
                 )
             shelf_life = float(estimate.flat[0])
+    model_range_check = getattr(model, "extrapolated_features", None)
+    extrapolation_warnings = (
+        tuple(model_range_check(f))
+        if callable(model_range_check)
+        else out_of_range_features(f, params)
+    )
     return OptionDraws(
         loss=loss,
         value_fraction=1.0 - loss,
         temp_mean_c=float(np.asarray(baseline.temp_mean_c).flat[0]),
         temp_max_c=float(np.asarray(baseline.temp_max_c).flat[0]),
         remaining_shelf_life_p50_h=shelf_life,
-        extrapolation_warnings=out_of_range_features(f, params),
+        extrapolation_warnings=extrapolation_warnings,
     )
 
 
