@@ -280,6 +280,13 @@ def test_recommendation_rejects_missing_or_crossed_net_p90():
         recommend([replace(results[0], net_p90=results[0].net_p50 - 1.0)])
 
 
+def test_recommendation_rejects_nonfinite_net_quantiles():
+    p, lot, options = inputs()
+    results = run_all(MonotoneLossModel(), lot, options[:1], draw(1_000, 8), p)
+    with pytest.raises(ValueError, match="non-finite net P10/P50/P90"):
+        recommend([replace(results[0], net_p50=float("nan"))])
+
+
 def test_invalid_policy_is_rejected():
     with pytest.raises(ValueError, match="lam"):
         Policy(lam=1.5)

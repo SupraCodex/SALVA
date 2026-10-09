@@ -181,6 +181,27 @@ def test_portfolio_uses_market_specific_price_and_absorption_draws():
     assert result.gross_value_p50 == pytest.approx(1_000.0)
 
 
+def test_portfolio_rejects_overflowed_market_economic_draws():
+    params, lot, option, shocks = base_inputs(absorption=100.0, cost=0.0)
+    option = replace(option, market=Market(1, "Huge", 1e308, 100.0))
+    shocks = replace(shocks, price_by_market={1: np.full(100, 1e308)})
+    od = OptionDraws(np.full(100, 0.0), np.full(100, 1.0), 25.0, 30.0)
+
+    with pytest.raises(
+        EconomicsError, match="portfolio economic draws must all be finite"
+    ):
+        evaluate_portfolio(
+            lot,
+            [option],
+            {option.id: lot.kg},
+            {option.id: od},
+            shocks,
+            params,
+            scenario_id="overflow",
+            action=option.action,
+        )
+
+
 def test_candidate_below_physical_capacity_is_infeasible_not_silently_partial():
     params, lot, option, shocks = base_inputs(cap=5.0)
     result = evaluate(FixedLossModel(), lot, option, shocks, params)

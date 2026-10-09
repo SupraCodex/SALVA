@@ -402,13 +402,24 @@ def evaluate_portfolio(
             if s.absorb_by_market is not None
             else s.absorb
         )
-        market_capacity_draws = absorb_kg * absorb_factor
+        with np.errstate(over="ignore", invalid="ignore"):
+            market_capacity_draws = absorb_kg * absorb_factor
+        if not np.all(np.isfinite(market_capacity_draws)):
+            raise EconomicsError(
+                f"market {market_id} absorption draws overflow finite capacity"
+            )
         full_price_eq = np.minimum(y, market_capacity_draws)
         surplus_eq = np.maximum(y - market_capacity_draws, 0.0)
-        gross += price * price_factor * (full_price_eq + params.delta * surplus_eq)
+        with np.errstate(over="ignore", invalid="ignore"):
+            gross += price * price_factor * (full_price_eq + params.delta * surplus_eq)
         market_surplus += surplus_eq
 
     net = gross - cost_total
+    if not all(
+        np.all(np.isfinite(values))
+        for values in (recoverable, gross, net, market_surplus)
+    ) or not isfinite(cost_total):
+        raise EconomicsError("portfolio economic draws must all be finite")
     loss = np.clip(1.0 - recoverable / lot.kg, 0.0, 1.0)
     surplus_fraction = np.divide(
         market_surplus,

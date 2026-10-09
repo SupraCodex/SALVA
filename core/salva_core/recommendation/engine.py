@@ -14,6 +14,8 @@ from .rationale import rationale_codes
 def _score(result: ScenarioResult, policy: Policy) -> float:
     if result.net_p10 is None or result.net_p50 is None or result.net_p90 is None:
         raise ValueError(f"feasible result {result.id} is missing net P10/P50/P90")
+    if not np.all(np.isfinite([result.net_p10, result.net_p50, result.net_p90])):
+        raise ValueError(f"feasible result {result.id} has non-finite net P10/P50/P90")
     if result.net_p10 > result.net_p50 + 1e-8:
         raise ValueError(f"result {result.id} violates net P10 <= P50 <= P90")
     if result.net_p50 > result.net_p90 + 1e-8:
