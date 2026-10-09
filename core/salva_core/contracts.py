@@ -45,13 +45,15 @@ class Option:
 
     id: str
     action: str              # continue | store | reroute | sell_local
-    kg: float
+    kg: float                # maximum physical kg this route can handle
     market: Market
     extra_h: float = 0.0     # extra hours (detour or storage hold)
     temp_offset: float = 0.0  # degC; for storage use ProductParams.storage_offset(mode)
-    cost: float = 0.0
+    cost: float = 0.0        # variable cost, FCFA per physical kg
     is_store: bool = False
     storage_mode: str = "none"
+    storage_site_id: str | None = None  # options sharing a site consume one capacity pool
+    storage_capacity_kg: float | None = None  # total physical capacity of that site
 
 
 @dataclass(frozen=True)
