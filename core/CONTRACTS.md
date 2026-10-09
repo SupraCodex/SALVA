@@ -97,6 +97,32 @@ alter the model prediction without a storage exposure. The deterministic explana
 `storage` compares against a no-hold/no-storage counterfactual; as with other factors, it is
 an attribution of model behavior, not proof of biological causality.
 
+## Chilling injury
+
+The kinetic path and the LightGBM adapter apply a common post-model chilling penalty to
+retained value. Core accumulates temperature-weighted cold exposure separately across the
+historical-age proxy, future transit and controlled storage hold. The historical phase uses
+the nominal air/packaging temperature because `Lot` does not contain an observed cold-chain
+history. Product parameters provide maturity-specific lower-temperature boundaries and
+onset doses. The green/breaker 10 °C boundary and the short-term 7 °C firm-ripe boundary
+follow the [UC Davis tomato postharvest guidance](https://postharvest.ucdavis.edu/produce-facts-sheets/tomato);
+the general below-10 °C chilling sensitivity and maturity dependence are also reported by
+[David et al. (2022)](https://pmc.ncbi.nlm.nih.gov/articles/PMC9493348/).
+
+The equivalent-hour temperature scale is an initial dose-model assumption selected to map
+roughly seven days at 5 °C to fourteen days at 10 °C. The post-onset loss rate is **not** an
+experimental or FCFA conversion: the cited studies establish cumulative, maturity-dependent
+injury but do not provide a universal economic penalty. Its versioned value in
+`data/reference/products.yaml` must be calibrated against cultivar, maturity, grade and
+outcome data before operational claims are made. The resulting injury is exposed as the
+deterministic `chilling` explanation factor and composes multiplicatively with other loss.
+
+Packaged LightGBM models must declare `loss_includes_chilling_penalty` in `metadata.json`.
+Set it to `false` when the artifact predicts loss before the common core adjustment, or to
+`true` only when its training target already includes the exact same configured adjustment;
+this declaration prevents silent double counting. Older artifacts without the declaration
+are rejected by the loader and must be reviewed/repackaged.
+
 ## Economic invariants
 
 - Loss is a fraction in [0, 1]; higher common `u` is a higher/equal loss quantile.

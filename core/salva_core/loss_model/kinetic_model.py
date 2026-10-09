@@ -88,7 +88,7 @@ class KineticLossModel:
             extrapolated_features=out_of_range_features(f, self.params),
         )
 
-    def remaining_shelf_life_p50_h(self, f: ConditionFeatures) -> np.ndarray:
+    def remaining_shelf_life_p50_h(self, f: ConditionFeatures) -> np.ndarray | None:
         """Estimate hours until the configured P50 commercial-loss threshold.
 
         The estimate uses the P50 lot multiplier and holds the current effective
@@ -114,24 +114,69 @@ class KineticLossModel:
                 f.age_h,
             )
         )
-        current_loss = float(kinetics.value_loss(q_now, f.packaging, self.params))
-        lo, hi = 1e-12, 1.0
-        for _ in range(60):
-            mid = (lo + hi) / 2.0
-            if (
-                float(kinetics.value_loss(mid, f.packaging, self.params))
-                > self.params.shelf_life_loss_threshold
-            ):
-                lo = mid
-            else:
-                hi = mid
-        target_quality = hi
+        historical_chill = float(
+            kinetics.chilling_equivalent_exposure_h(f, self.params, phase="historical")
+        )
+        current_base_loss = float(kinetics.value_loss(q_now, f.packaging, self.params))
+        current_chill = float(
+            kinetics.chilling_loss_fraction_from_dose(
+                historical_chill, f.maturity, self.params
+            )
+        )
+        current_loss = 1.0 - (1.0 - current_base_loss) * (1.0 - current_chill)
+        threshold = self.params.shelf_life_loss_threshold
+        if current_loss >= threshold:
+            return np.asarray(0.0)
         future_factor = f.future_rate_factor
         if future_factor is None:
             future_factor = kinetics.thermal_factor(
                 f.temp_mean_c, f.temp_max_c, self.params
             )
         rate = float(self.params.k_ref * future_factor * maturity_factor * k_lot)
-        if current_loss >= self.params.shelf_life_loss_threshold:
-            return np.asarray(0.0)
-        return np.asarray(max(0.0, np.log(q_now / target_quality) / max(rate, 1e-12)))
+        future_hours = float(f.remaining_transit_h) + float(f.hold_h)
+        future_chill = float(
+            kinetics.chilling_equivalent_exposure_h(f, self.params, phase="future")
+        )
+        if future_hours > 0.0:
+            chill_rate = future_chill / future_hours
+        else:
+            future_temp = (
+                f.transit_temp_mean_c
+                if f.transit_temp_mean_c is not None
+                else f.temp_mean_c
+            )
+            threshold_c = float(
+                lookup(self.params.chilling_threshold_c, f.maturity, "maturity")
+            )
+            below = max(threshold_c - float(future_temp), 0.0)
+            chill_rate = (
+                float(
+                    np.exp(min(below / self.params.chilling_temperature_scale_c, 40.0))
+                )
+                if float(future_temp) < threshold_c
+                else 0.0
+            )
+
+        def projected_loss(hours: float) -> float:
+            projected_quality = float(q_now * np.exp(-rate * hours))
+            base_loss = float(
+                kinetics.value_loss(projected_quality, f.packaging, self.params)
+            )
+            dose = historical_chill + chill_rate * hours
+            injury = float(
+                kinetics.chilling_loss_fraction_from_dose(dose, f.maturity, self.params)
+            )
+            return 1.0 - (1.0 - base_loss) * (1.0 - injury)
+
+        low, high = 0.0, 1.0
+        while projected_loss(high) < threshold and high < 1e9:
+            high *= 2.0
+        if projected_loss(high) < threshold:
+            return None
+        for _ in range(80):
+            mid = (low + high) / 2.0
+            if projected_loss(mid) >= threshold:
+                high = mid
+            else:
+                low = mid
+        return np.asarray(high)

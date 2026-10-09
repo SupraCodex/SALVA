@@ -1,5 +1,7 @@
 """LossModel contract, P10<=P50<=P90, monotonicity in u, explanations, factory."""
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 from salva_core import features as F
@@ -127,6 +129,43 @@ def test_cooler_means_less_loss_in_explanations(p, model):
     hot = float(contributions(model, feats(p, temp_air_c=36), p)["temperature"])
     cool = float(contributions(model, feats(p, temp_air_c=21), p)["temperature"])
     assert hot > cool
+
+
+def test_chilling_is_a_separate_explainable_loss_factor(p, model):
+    cold = feats(
+        p,
+        maturity="green",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=2.5,
+    )
+    warm = feats(
+        p,
+        maturity="green",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=20.0,
+    )
+    cold_contribution = contributions(model, cold, p)["chilling"]
+    warm_contribution = contributions(model, warm, p)["chilling"]
+    assert float(cold_contribution) > 0.0
+    assert float(warm_contribution) == pytest.approx(0.0)
+
+
+def test_remaining_shelf_life_includes_cumulative_future_chilling(p):
+    cold = feats(
+        p,
+        maturity="green",
+        age_h=0.0,
+        remaining_h=168.0,
+        temp_air_c=2.5,
+    )
+    with_chilling = KineticLossModel(p).remaining_shelf_life_p50_h(cold)
+    without_chilling = KineticLossModel(
+        replace(p, chilling_loss_rate_per_equivalent_h=0.0)
+    ).remaining_shelf_life_p50_h(cold)
+    assert with_chilling is not None and without_chilling is not None
+    assert float(with_chilling) < float(without_chilling)
 
 
 def test_sampling_helpers():

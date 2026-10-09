@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from .. import kinetics
 from ..contracts import ConditionFeatures, LossModel
 from ..features import n_rows, with_changes
 from ..params import ProductParams
@@ -24,6 +25,7 @@ FACTOR_NAMES = (
     "maturity",
     "packaging",
     "storage",
+    "chilling",
 )
 
 
@@ -64,6 +66,19 @@ def contributions(
     out = {}
     for name, cf in counterfactuals(f, p).items():
         out[name] = base - np.asarray(model.predict(cf).p50, dtype=float)
+    injury = np.asarray(
+        kinetics.chilling_loss_fraction_from_dose(
+            kinetics.chilling_equivalent_exposure_h(f, p), f.maturity, p
+        ),
+        dtype=float,
+    )
+    without_chilling = np.divide(
+        base - injury,
+        1.0 - injury,
+        out=np.zeros_like(base, dtype=float),
+        where=injury < 1.0,
+    )
+    out["chilling"] = base - np.clip(without_chilling, 0.0, 1.0)
     return out
 
 

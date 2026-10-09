@@ -104,8 +104,44 @@ tomato:
         storage site of this type. 'none' = no storage.
       source: assumption
       note: >
-        Chilling injury of tomato at low temperature is NOT modelled; cold_room
-        results are optimistic. Verify literature before relying on cold_room.
+        The core applies a separate maturity-aware chilling penalty below configured
+        thresholds. This offset remains an uncalibrated site assumption; measured product
+        temperature is needed before interpreting cold-room scenarios operationally.
+    chilling_threshold_c:
+      value: {green: 10.0, breaker: 10.0, ripe: 7.0}
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold exposure.
+      source: literature
+      reference: https://postharvest.ucdavis.edu/produce-facts-sheets/tomato
+      note: >
+        10 C is the documented chilling-sensitive boundary for green tomatoes; 7 C is
+        the lower recommended short-term storage bound for firm-ripe tomatoes. These
+        operating thresholds are not universal cultivar-specific injury cutoffs.
+    chilling_onset_equivalent_h:
+      value: {green: 336.0, breaker: 336.0, ripe: 120.0}
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty starts.
+      source: assumption
+      note: >
+        Green/breaker 336 h corresponds to the 14-day mature-green storage observation;
+        ripe 120 h is the upper 5-day end of the firm-ripe short-term window. The breaker
+        value is a conservative proxy; calibrate by cultivar and maturity data.
+    chilling_temperature_scale_c:
+      value: 7.2
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent cold hours.
+      source: assumption
+      note: >
+        Initial value maps approximately 7 days at 5 C to 14 days at 10 C, as reported
+        in the UC Davis handling guidance; it is a dose model assumption, not a fitted law.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.00015
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated chilling dose.
+      source: assumption
+      note: >
+        Illustrative penalty intensity only. The cited sources do not supply a universal
+        FCFA/value-loss conversion; calibrate with local cultivar, grade and outcome data.
     risk_thresholds:
       value: {low_p50_max: 0.10, medium_p50_max: 0.25, low_width_max: 0.20, medium_width_max: 0.35}
       unit: loss-fraction thresholds

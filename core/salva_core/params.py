@@ -40,12 +40,16 @@ REQUIRED_SCALARS = (
     "delta",
     "default_diurnal_amp_c",
     "shelf_life_loss_threshold",
+    "chilling_temperature_scale_c",
+    "chilling_loss_rate_per_equivalent_h",
 )
 REQUIRED_MAPPINGS = (
     "maturity",
     "pack_delta_c",
     "pack_damage",
     "storage_temp_offset_c",
+    "chilling_threshold_c",
+    "chilling_onset_equivalent_h",
     "risk_thresholds",
 )
 
@@ -89,6 +93,10 @@ class ProductParams:
     pack_delta_c: dict[str, float]
     pack_damage: dict[str, float]
     storage_temp_offset_c: dict[str, float]
+    chilling_threshold_c: dict[str, float]
+    chilling_onset_equivalent_h: dict[str, float]
+    chilling_temperature_scale_c: float
+    chilling_loss_rate_per_equivalent_h: float
     grades: tuple[tuple[float, float], ...]
     shelf_life_loss_threshold: float
     risk_thresholds: dict[str, float]
@@ -172,6 +180,8 @@ def _validate(p: ProductParams) -> None:
         p.delta,
         p.default_diurnal_amp_c,
         p.shelf_life_loss_threshold,
+        p.chilling_temperature_scale_c,
+        p.chilling_loss_rate_per_equivalent_h,
     )
     if not all(np.isfinite(value) for value in scalar_values):
         raise ParamsError(f"{p.name}: scalar parameters must all be finite")
@@ -180,6 +190,8 @@ def _validate(p: ProductParams) -> None:
         ("pack_delta_c", p.pack_delta_c),
         ("pack_damage", p.pack_damage),
         ("storage_temp_offset_c", p.storage_temp_offset_c),
+        ("chilling_threshold_c", p.chilling_threshold_c),
+        ("chilling_onset_equivalent_h", p.chilling_onset_equivalent_h),
         ("risk_thresholds", p.risk_thresholds),
     ):
         if not all(np.isfinite(value) for value in mapping.values()):
@@ -189,6 +201,12 @@ def _validate(p: ProductParams) -> None:
         ("pack_delta_c", p.pack_delta_c, EXPECTED_PACKAGINGS),
         ("pack_damage", p.pack_damage, EXPECTED_PACKAGINGS),
         ("storage_temp_offset_c", p.storage_temp_offset_c, EXPECTED_STORAGE_MODES),
+        ("chilling_threshold_c", p.chilling_threshold_c, EXPECTED_MATURITIES),
+        (
+            "chilling_onset_equivalent_h",
+            p.chilling_onset_equivalent_h,
+            EXPECTED_MATURITIES,
+        ),
     ):
         if set(mapping) != expected:
             raise ParamsError(
@@ -226,6 +244,14 @@ def _validate(p: ProductParams) -> None:
         raise ParamsError(f"{p.name}: delta must be in [0, 1]")
     if p.default_diurnal_amp_c < 0:
         raise ParamsError(f"{p.name}: default_diurnal_amp_c must be >= 0")
+    if p.chilling_temperature_scale_c <= 0:
+        raise ParamsError(f"{p.name}: chilling_temperature_scale_c must be > 0")
+    if p.chilling_loss_rate_per_equivalent_h < 0:
+        raise ParamsError(f"{p.name}: chilling_loss_rate_per_equivalent_h must be >= 0")
+    if any(not 0 <= value <= 50 for value in p.chilling_threshold_c.values()):
+        raise ParamsError(f"{p.name}: chilling thresholds must be within [0, 50] degC")
+    if any(value <= 0 for value in p.chilling_onset_equivalent_h.values()):
+        raise ParamsError(f"{p.name}: chilling onset durations must be > 0")
     if not 0 < p.shelf_life_loss_threshold < 1:
         raise ParamsError(f"{p.name}: shelf_life_loss_threshold must be in (0, 1)")
     required_risk = {
@@ -351,6 +377,12 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
             pack_delta_c=mappings["pack_delta_c"],
             pack_damage=mappings["pack_damage"],
             storage_temp_offset_c=mappings["storage_temp_offset_c"],
+            chilling_threshold_c=mappings["chilling_threshold_c"],
+            chilling_onset_equivalent_h=mappings["chilling_onset_equivalent_h"],
+            chilling_temperature_scale_c=scalars["chilling_temperature_scale_c"],
+            chilling_loss_rate_per_equivalent_h=scalars[
+                "chilling_loss_rate_per_equivalent_h"
+            ],
             risk_thresholds=mappings["risk_thresholds"],
             grades=grades,
             valid_ranges=valid_ranges,

@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 
+from .. import kinetics
 from ..contracts import ConditionFeatures, LossDistribution
 from ..features import (
     MODEL_COLUMNS,
@@ -125,6 +126,12 @@ class LightGbmLossModel:
         """Names of calibration-bounded features that required clipping."""
         return self._matrix(f)[1]
 
+    def _apply_chilling(self, loss, f: ConditionFeatures):
+        """Apply the common physical adjustment unless the artifact already includes it."""
+        if self.metadata.get("loss_includes_chilling_penalty") is True:
+            return loss
+        return kinetics.apply_chilling_penalty(loss, f, self.params)
+
     def quantile_matrix(self, f: ConditionFeatures) -> np.ndarray:
         x, _, outside_rows = self._matrix(f)
         raw = np.column_stack([self.models[q].predict(x) for q in QUANTILES])
@@ -134,7 +141,7 @@ class LightGbmLossModel:
         # support for the outer quantiles on OOD rows instead of a falsely narrow band.
         quantiles[outside_rows, : _IDX[0.25]] = 0.0
         quantiles[outside_rows, _IDX[0.90] :] = 1.0
-        return quantiles
+        return self._apply_chilling(quantiles, f)
 
     def sample_loss(self, f: ConditionFeatures, u) -> np.ndarray:
         return interp_quantiles(self.quantile_matrix(f), _LEVELS, u)
@@ -150,6 +157,7 @@ class LightGbmLossModel:
         )
         q[outside_rows, 0] = 0.0
         q[outside_rows, 2] = 1.0
+        q = self._apply_chilling(q, f)
         p10, p50, p90 = q[:, 0], q[:, 1], q[:, 2]
         if n_rows(f) == 1:
             distribution = LossDistribution(
@@ -239,6 +247,10 @@ class LightGbmLossModel:
 
         folder = Path(path)
         meta = json.loads((folder / "metadata.json").read_text())
+        if not isinstance(meta.get("loss_includes_chilling_penalty"), bool):
+            raise ModelSchemaMismatch(
+                "metadata must declare boolean loss_includes_chilling_penalty"
+            )
         if meta.get("feature_schema_hash") != schema_hash():
             raise ModelSchemaMismatch(
                 f"Model trained with schema {meta.get('feature_schema_hash', '?')[:8]}, "

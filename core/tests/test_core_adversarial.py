@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -118,6 +119,49 @@ def test_lightgbm_extrapolation_expands_outer_quantiles_and_preserves_median(p):
     assert result.p90 == 1.0
     sampled = model.sample_loss(f, np.array([0.10]))
     assert sampled[0] == 0.0
+
+
+def test_chilling_penalty_is_applied_once_to_lightgbm_distribution(p):
+    f = features.assemble(
+        p,
+        maturity="green",
+        packaging="crate",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=2.5,
+    )
+    from salva_core import kinetics
+
+    injury = float(
+        kinetics.chilling_loss_fraction_from_dose(
+            kinetics.chilling_equivalent_exposure_h(f, p), "green", p
+        )
+    )
+    boosters = {q: ConstantBooster(q) for q in QUANTILES}
+    model = LightGbmLossModel(boosters, p, "fake-lgbm")
+    adjusted = model.predict(f)
+    expected_p50 = 1.0 - (1.0 - 0.50) * (1.0 - injury)
+    assert adjusted.p50 == pytest.approx(expected_p50)
+    assert adjusted.p10 <= adjusted.p50 <= adjusted.p90
+    assert model.sample_loss(f, np.array([0.50]))[0] == pytest.approx(expected_p50)
+
+    already_adjusted = LightGbmLossModel(
+        {q: ConstantBooster(q) for q in QUANTILES},
+        p,
+        "fake-lgbm-chilled",
+        metadata={"loss_includes_chilling_penalty": True},
+    )
+    assert already_adjusted.predict(f).p50 == pytest.approx(0.50)
+
+
+def test_lightgbm_loader_rejects_artifact_without_chilling_declaration(
+    tmp_path: Path, p
+):
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"feature_schema_hash": features.schema_hash()}), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="loss_includes_chilling_penalty"):
+        LightGbmLossModel.load(tmp_path, p)
 
 
 def test_lightgbm_artifact_ranges_override_planning_envelope(p):
@@ -329,6 +373,18 @@ def test_sensitivity_axes_are_sorted_before_boundary_detection():
         (
             lambda doc: doc["tomato"]["parameters"]["maturity"]["value"].pop("ripe"),
             "expected categories",
+        ),
+        (
+            lambda doc: doc["tomato"]["parameters"]["chilling_threshold_c"][
+                "value"
+            ].pop("ripe"),
+            "expected categories",
+        ),
+        (
+            lambda doc: doc["tomato"]["parameters"][
+                "chilling_temperature_scale_c"
+            ].update(value=0.0),
+            "chilling_temperature_scale_c must be > 0",
         ),
     ],
 )

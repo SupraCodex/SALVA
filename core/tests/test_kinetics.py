@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from salva_core import features
 from salva_core import kinetics as k
 from salva_core.params import ProductParams, load_product
 
@@ -125,3 +126,73 @@ def test_unknown_category_rejected(p):
 
     with pytest.raises(ParamsError):
         k.degradation_rate(20, 20, "rotten", 1.0, p)
+
+
+def test_chilling_dose_is_cumulative_and_short_cold_hold_is_below_onset(p):
+    short_hold = features.assemble(
+        p,
+        maturity="green",
+        packaging="crate",
+        age_h=0.0,
+        remaining_h=0.0,
+        temp_air_c=17.0,
+        hold_h=72.0,
+        temp_offset_c=-12.0,
+        storage_mode="cold_room",
+    )
+    short_dose = float(k.chilling_equivalent_exposure_h(short_hold, p))
+    assert short_dose == pytest.approx(72.0 * np.exp(5.0 / 7.2))
+    assert short_dose < p.chilling_onset_equivalent_h["green"]
+    assert k.chilling_loss_fraction_from_dose(short_dose, "green", p) == pytest.approx(
+        0.0
+    )
+
+    prolonged_cold = features.assemble(
+        p,
+        maturity="green",
+        packaging="crate",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=2.5,
+    )
+    dose = float(k.chilling_equivalent_exposure_h(prolonged_cold, p))
+    injury = float(k.chilling_loss_fraction_from_dose(dose, "green", p))
+    assert dose > p.chilling_onset_equivalent_h["green"]
+    assert injury > 0.0
+
+    quality, loss = k.quality_and_loss(prolonged_cold, 1.0, p)
+    unadjusted = float(k.value_loss(quality, "crate", p))
+    assert loss == pytest.approx(1.0 - (1.0 - unadjusted) * (1.0 - injury))
+
+
+def test_chilling_damage_is_monotone_in_cold_duration_and_stages(p):
+    doses = np.array([0.0, 120.0, 336.0, 672.0, 1_000.0])
+    green = k.chilling_loss_fraction_from_dose(doses, "green", p)
+    assert np.all(np.diff(green) >= 0.0)
+    assert green[0] == 0.0 and green[-1] > green[2]
+
+    green_cold = features.assemble(
+        p,
+        maturity="green",
+        packaging="crate",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=2.5,
+    )
+    ripe_cold = features.assemble(
+        p,
+        maturity="ripe",
+        packaging="crate",
+        age_h=336.0,
+        remaining_h=0.0,
+        temp_air_c=2.5,
+    )
+    assert float(
+        k.chilling_loss_fraction_from_dose(
+            k.chilling_equivalent_exposure_h(green_cold, p), "green", p
+        )
+    ) > float(
+        k.chilling_loss_fraction_from_dose(
+            k.chilling_equivalent_exposure_h(ripe_cold, p), "ripe", p
+        )
+    )
