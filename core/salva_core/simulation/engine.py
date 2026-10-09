@@ -163,6 +163,7 @@ class SimulationEngine:
     """Small stateful facade for the core API; all calculations remain pure Python/NumPy."""
 
     def __init__(self, model, params: ProductParams) -> None:
+        """Bind a loss model and validated product parameters to the facade."""
         self.model = model
         self.params = params
 
@@ -176,6 +177,7 @@ class SimulationEngine:
         include_allocation: bool = True,
         store_cap: float | None = None,
     ) -> list[ScenarioResult]:
+        """Run a seeded simulation and return route and optional split results."""
         shocks = draw(n_draws, seed)
         return run_all(
             self.model,

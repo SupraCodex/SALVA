@@ -15,6 +15,8 @@ from .models import AllocationPlan, ScenarioResult
 from .uncertainty import validate as validate_shocks
 
 _TOL = 1e-9
+_ACTIONS = frozenset({"continue", "store", "reroute", "sell_local"})
+_ACTIONS = frozenset({"continue", "store", "reroute", "sell_local"})
 
 
 class EconomicsError(ValueError):
@@ -44,6 +46,16 @@ def validate_option(lot: Lot, option: Option) -> None:
         raise EconomicsError("option.id must be a non-empty string")
     if not option.action or not isinstance(option.action, str):
         raise EconomicsError(f"option {option.id}: action must be a non-empty string")
+    if option.action not in _ACTIONS:
+        raise EconomicsError(
+            f"option {option.id}: unsupported action {option.action!r}; "
+            f"allowed: {sorted(_ACTIONS)}"
+        )
+    if option.action not in _ACTIONS:
+        raise EconomicsError(
+            f"option {option.id}: unsupported action {option.action!r}; "
+            f"allowed: {sorted(_ACTIONS)}"
+        )
     if not isfinite(float(lot.kg)) or lot.kg <= 0:
         raise EconomicsError("lot.kg must be finite and > 0")
     capacity = _finite_nonnegative(option.kg, f"option {option.id}.kg")
@@ -192,6 +204,7 @@ def evaluate_portfolio(
     weighted_extra_h = 0.0
     stored_kg = 0.0
     site_capacities: dict[str, float] = {}
+    site_usage: dict[str, float] = {}
     market_y: dict[int, np.ndarray] = {}
     market_meta: dict[int, tuple[float, float]] = {}
     market_surplus = np.zeros(n)
@@ -232,6 +245,7 @@ def evaluate_portfolio(
                     f"storage site {site_id} has inconsistent capacities across options"
                 )
             site_capacities[site_id] = site_capacity
+            site_usage[site_id] = site_usage.get(site_id, 0.0) + qty
 
         mid = option.market.id
         previous = market_meta.get(mid)
@@ -242,6 +256,13 @@ def evaluate_portfolio(
             )
         market_meta[mid] = current
         market_y[mid] = market_y.get(mid, np.zeros(n)) + y
+
+    for site_id, used in site_usage.items():
+        capacity = site_capacities[site_id]
+        if used > capacity + 1e-6:
+            raise EconomicsError(
+                f"storage site {site_id} capacity exceeded: {used:g} > {capacity:g} kg"
+            )
 
     price_factor = s.price
     absorb_factor = s.absorb

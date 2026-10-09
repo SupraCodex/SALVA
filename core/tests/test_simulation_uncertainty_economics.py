@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 from salva_core.contracts import Lot, Market, Option, Shocks
 from salva_core.params import load_product
-from salva_core.simulation.economics import EconomicsError, evaluate
+from salva_core.simulation.economics import (
+    EconomicsError,
+    OptionDraws,
+    evaluate,
+    evaluate_portfolio,
+)
 from salva_core.simulation.uncertainty import ShockValidationError, draw, validate
 
 
@@ -118,3 +123,48 @@ def test_loss_model_contract_violation_is_rejected():
     params, lot, option, shocks = base_inputs()
     with pytest.raises(EconomicsError, match="loss fractions"):
         evaluate(FixedLossModel(loss=1.01), lot, option, shocks, params)
+
+
+def test_unknown_action_is_rejected_before_model_execution():
+    params, lot, option, shocks = base_inputs()
+    with pytest.raises(EconomicsError, match="unsupported action"):
+        evaluate(FixedLossModel(), lot, replace(option, action="guess"), shocks, params)
+
+
+def test_direct_portfolio_evaluation_enforces_shared_storage_capacity():
+    params, lot, option, shocks = base_inputs(lot_kg=6.0, cap=6.0)
+    options = [
+        replace(
+            option,
+            id="store-a",
+            action="store",
+            is_store=True,
+            storage_mode="ambient_shade",
+            storage_site_id="site",
+            storage_capacity_kg=5.0,
+        ),
+        replace(
+            option,
+            id="store-b",
+            action="store",
+            is_store=True,
+            storage_mode="ventilated",
+            storage_site_id="site",
+            storage_capacity_kg=5.0,
+        ),
+    ]
+    draws = {
+        o.id: OptionDraws(np.full(100, 0.2), np.full(100, 0.8), 25.0, 30.0)
+        for o in options
+    }
+    with pytest.raises(EconomicsError, match="capacity exceeded"):
+        evaluate_portfolio(
+            lot,
+            options,
+            {"store-a": 3.0, "store-b": 3.0},
+            draws,
+            shocks,
+            params,
+            scenario_id="bad",
+            action="optimized_split",
+        )

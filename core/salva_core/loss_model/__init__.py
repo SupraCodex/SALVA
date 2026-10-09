@@ -20,10 +20,16 @@ from ..params import ProductParams, load_product, repo_root
 from .kinetic_model import KineticLossModel
 
 log = logging.getLogger(__name__)
-__all__ = ["KineticLossModel", "active_config_path", "get_experimental_loss_model", "get_loss_model"]
+__all__ = [
+    "KineticLossModel",
+    "active_config_path",
+    "get_experimental_loss_model",
+    "get_loss_model",
+]
 
 
 def active_config_path() -> Path:
+    """Return the model registry path, honoring the environment override."""
     env = os.environ.get("SALVA_ACTIVE_MODEL_PATH")
     return Path(env) if env else repo_root() / "ml" / "artifacts" / "active.json"
 
@@ -38,11 +44,17 @@ def _read_active(path: Path | None) -> dict:
 def _load_lgbm(name: str, params: ProductParams, active: Path | None) -> LossModel:
     from .lgbm_model import LightGbmLossModel
 
-    base = (Path(active).parent if active else active_config_path().parent) / "models" / name
+    base = (
+        (Path(active).parent if active else active_config_path().parent)
+        / "models"
+        / name
+    )
     return LightGbmLossModel.load(base, params)
 
 
-def get_loss_model(active_json: Path | None = None, params: ProductParams | None = None) -> LossModel:
+def get_loss_model(
+    active_json: Path | None = None, params: ProductParams | None = None
+) -> LossModel:
     """Return the PRODUCTION loss model. Never raises because of the ML package."""
     params = params or load_product()
     cfg = _read_active(active_json)
@@ -51,12 +63,15 @@ def get_loss_model(active_json: Path | None = None, params: ProductParams | None
         try:
             return _load_lgbm(name, params, active_json)
         except Exception as exc:  # noqa: BLE001 - production must keep working
-            log.warning("Cannot load %s (%s); falling back to the kinetic model", name, exc)
+            log.warning(
+                "Cannot load %s (%s); falling back to the kinetic model", name, exc
+            )
     return KineticLossModel(params)
 
 
-def get_experimental_loss_model(active_json: Path | None = None,
-                                params: ProductParams | None = None) -> LossModel | None:
+def get_experimental_loss_model(
+    active_json: Path | None = None, params: ProductParams | None = None
+) -> LossModel | None:
     """Return the experimental model (e.g. LightGBM after NO-GO) or None."""
     params = params or load_product()
     name = _read_active(active_json).get("experimental")

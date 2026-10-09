@@ -102,3 +102,18 @@ python -m pytest core/tests -q
 
 The core remains importable as a pure Python package. `scipy.optimize.linprog` uses the
 HiGHS backend declared by the package; no network services are called by the engine.
+
+## Engineering guarantees
+
+The engine rejects unknown actions, malformed shock vectors, invalid loss fractions,
+inconsistent market metadata, and allocations that exceed a shared storage site. Every
+allocation conserves physical mass: routed kilograms plus explicit discard equals the lot
+quantity. Counterfactual features apply the same delay invariant as production features,
+and quantile interpolation rejects non-monotone probability levels instead of silently
+producing a result.
+
+The test suite includes adversarial cases for shared storage capacity, mass conservation,
+common random numbers, infeasible whole-lot routes, quantile ordering, negative-value
+discard, and deterministic recommendations. These tests are not a scientific validation
+claim: the committed product parameters are assumptions pending literature and field
+calibration.

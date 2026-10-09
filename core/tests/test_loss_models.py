@@ -21,7 +21,14 @@ def model(p):
 
 
 def feats(p, **kw):
-    args = {"maturity": "breaker", "packaging": "crate", "age_h": 50, "remaining_h": 18, "delay_h": 12, "temp_air_c": 29}
+    args = {
+        "maturity": "breaker",
+        "packaging": "crate",
+        "age_h": 50,
+        "remaining_h": 18,
+        "delay_h": 12,
+        "temp_air_c": 29,
+    }
     args.update(kw)
     return F.assemble(p, **args)
 
@@ -33,8 +40,13 @@ def test_implements_contract(model):
 def test_quantile_order_and_bounds(p, model):
     rng = np.random.default_rng(1)
     n = 2000
-    f = feats(p, age_h=rng.uniform(0, 168, n), remaining_h=rng.uniform(1, 72, n), delay_h=0.0,
-              temp_air_c=rng.uniform(15, 38, n))
+    f = feats(
+        p,
+        age_h=rng.uniform(0, 168, n),
+        remaining_h=rng.uniform(1, 72, n),
+        delay_h=0.0,
+        temp_air_c=rng.uniform(15, 38, n),
+    )
     d = model.predict(f)
     assert np.all(d.p10 <= d.p50) and np.all(d.p50 <= d.p90)
     assert np.all((d.p10 >= 0) & (d.p90 <= 1))
@@ -89,7 +101,11 @@ def test_sampling_helpers():
     levels = np.array([0.1, 0.5, 0.9])
     assert np.allclose(interp_quantiles(s, levels, 0.5), s[:, 1])
     assert np.allclose(interp_quantiles(s, levels, 0.3), 0.5 * (s[:, 0] + s[:, 1]))
-    assert np.allclose(interp_quantiles(s, levels, 0.99), s[:, 2])      # flat tail
+    assert np.allclose(interp_quantiles(s, levels, 0.99), s[:, 2])  # flat tail
+    with pytest.raises(ValueError, match="strictly increasing"):
+        interp_quantiles(s, np.array([0.1, 0.1, 0.9]), 0.5)
+    with pytest.raises(ValueError, match="at least two"):
+        interp_quantiles(np.array([[0.2]]), np.array([0.5]), 0.5)
 
 
 def test_factory_defaults_to_kinetic(tmp_path):

@@ -22,6 +22,7 @@ class AllocationLine:
 
     @property
     def kg(self) -> float:
+        """Return the total physical quantity assigned to this option."""
         return self.full_price_kg + self.surplus_kg
 
 
@@ -35,13 +36,16 @@ class AllocationPlan:
 
     @property
     def allocated_kg(self) -> float:
+        """Return the physical quantity assigned to routes, excluding discard."""
         return sum(line.kg for line in self.lines)
 
     @property
     def total_kg(self) -> float:
+        """Return the conserved physical mass represented by the plan."""
         return self.allocated_kg + self.discarded_kg
 
     def as_dict(self) -> dict[str, Any]:
+        """Serialize the plan without exposing solver-specific arrays."""
         return {
             "lines": [
                 {
@@ -109,14 +113,17 @@ class ScenarioResult:
 
     @property
     def net_value_p10(self) -> float | None:
+        """Return the P10 net value under the stable public spelling."""
         return self.net_p10
 
     @property
     def net_value_p50(self) -> float | None:
+        """Return the P50 net value under the stable public spelling."""
         return self.net_p50
 
     @property
     def net_value_p90(self) -> float | None:
+        """Return the P90 net value under the stable public spelling."""
         return self.net_p90
 
     @property

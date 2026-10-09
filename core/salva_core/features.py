@@ -25,8 +25,13 @@ from .params import ParamsError, ProductParams, lookup
 
 FEATURE_VERSION = "1.0.0"
 NUMERIC_FEATURES = (
-    "age_h", "temp_mean_c", "temp_max_c", "degree_hours_above_ref",
-    "remaining_transit_h", "delay_h", "exposure_h",
+    "age_h",
+    "temp_mean_c",
+    "temp_max_c",
+    "degree_hours_above_ref",
+    "remaining_transit_h",
+    "delay_h",
+    "exposure_h",
 )
 CATEGORICAL_FEATURES = ("maturity", "packaging", "storage_mode")
 MODEL_COLUMNS = NUMERIC_FEATURES + CATEGORICAL_FEATURES
@@ -36,17 +41,26 @@ MATURITY_CODES = {"green": 0, "breaker": 1, "ripe": 2}
 PACKAGING_CODES = {"crate": 0, "carton": 1, "sack": 2}
 STORAGE_CODES = {"none": 0, "ambient_shade": 1, "ventilated": 2, "cold_room": 3}
 CODE_MAPS = {
-    "maturity": MATURITY_CODES, "packaging": PACKAGING_CODES, "storage_mode": STORAGE_CODES,
+    "maturity": MATURITY_CODES,
+    "packaging": PACKAGING_CODES,
+    "storage_mode": STORAGE_CODES,
 }
 
 # Monotone relationship with the loss (+1: loss never decreases when the feature grows).
 MONOTONE_INCREASING = (
-    "age_h", "temp_mean_c", "temp_max_c", "degree_hours_above_ref",
-    "remaining_transit_h", "delay_h", "exposure_h", "maturity",
+    "age_h",
+    "temp_mean_c",
+    "temp_max_c",
+    "degree_hours_above_ref",
+    "remaining_transit_h",
+    "delay_h",
+    "exposure_h",
+    "maturity",
 )
 
 
 def feature_schema() -> dict[str, Any]:
+    """Return the versioned feature schema consumed by training and inference."""
     return {
         "version": FEATURE_VERSION,
         "columns": list(MODEL_COLUMNS),
@@ -58,6 +72,7 @@ def feature_schema() -> dict[str, Any]:
 
 
 def schema_hash() -> str:
+    """Return the SHA-256 fingerprint of the exact feature schema."""
     blob = json.dumps(feature_schema(), sort_keys=True).encode()
     return hashlib.sha256(blob).hexdigest()
 
@@ -72,7 +87,9 @@ def check_params_compatible(p: ProductParams) -> None:
     ):
         extra = set(mapping) - set(codes)
         if extra:
-            raise ParamsError(f"{p.name}.{key}: categories {sorted(extra)} unknown to features.py")
+            raise ParamsError(
+                f"{p.name}.{key}: categories {sorted(extra)} unknown to features.py"
+            )
 
 
 def _arr(x: Any, name: str) -> np.ndarray:
@@ -133,17 +150,28 @@ def assemble(
     amp = _nonneg(_arr(amp, "diurnal_amp_c"), "diurnal_amp_c")
 
     pack_delta = lookup(p.pack_delta_c, packaging, "packaging")
-    temp_mean = air + pack_delta + _arr(temp_offset_c, "temp_offset_c") + _arr(temp_shock_c, "temp_shock_c")
+    temp_mean = (
+        air
+        + pack_delta
+        + _arr(temp_offset_c, "temp_offset_c")
+        + _arr(temp_shock_c, "temp_shock_c")
+    )
     remaining_transit = (rem + extra) * factor
     exposure = age + remaining_transit
     degree_hours = np.maximum(temp_mean - p.t_ref_c, 0.0) * exposure
-    lookup(p.maturity, maturity, "maturity")           # validates categories
+    lookup(p.maturity, maturity, "maturity")  # validates categories
     lookup(STORAGE_CODES_FLOAT, storage_mode, "storage_mode")
     return ConditionFeatures(
         product=product or p.name,
-        maturity=maturity if isinstance(maturity, str) else np.asarray(maturity, dtype=object),
-        packaging=packaging if isinstance(packaging, str) else np.asarray(packaging, dtype=object),
-        storage_mode=storage_mode if isinstance(storage_mode, str) else np.asarray(storage_mode, dtype=object),
+        maturity=maturity
+        if isinstance(maturity, str)
+        else np.asarray(maturity, dtype=object),
+        packaging=packaging
+        if isinstance(packaging, str)
+        else np.asarray(packaging, dtype=object),
+        storage_mode=storage_mode
+        if isinstance(storage_mode, str)
+        else np.asarray(storage_mode, dtype=object),
         age_h=_unwrap(age),
         temp_mean_c=_unwrap(temp_mean),
         temp_max_c=_unwrap(temp_mean + amp),
@@ -160,34 +188,61 @@ STORAGE_CODES_FLOAT = {k: float(v) for k, v in STORAGE_CODES.items()}
 def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionFeatures:
     """Features of ``opt`` applied to ``lot`` under the draws ``shocks`` (called by P1)."""
     return assemble(
-        p, maturity=lot.maturity, packaging=lot.packaging, age_h=lot.age_h,
-        remaining_h=lot.remaining_h, temp_air_c=lot.temp_c, delay_h=lot.delay_h,
-        diurnal_amp_c=lot.diurnal_amp_c, temp_shock_c=shocks.temp,
-        transit_factor=shocks.transit, extra_h=opt.extra_h, temp_offset_c=opt.temp_offset,
-        storage_mode=opt.storage_mode, product=lot.product,
+        p,
+        maturity=lot.maturity,
+        packaging=lot.packaging,
+        age_h=lot.age_h,
+        remaining_h=lot.remaining_h,
+        temp_air_c=lot.temp_c,
+        delay_h=lot.delay_h,
+        diurnal_amp_c=lot.diurnal_amp_c,
+        temp_shock_c=shocks.temp,
+        transit_factor=shocks.transit,
+        extra_h=opt.extra_h,
+        temp_offset_c=opt.temp_offset,
+        storage_mode=opt.storage_mode,
+        product=lot.product,
     )
 
 
-def with_changes(f: ConditionFeatures, p: ProductParams, **changes: Any) -> ConditionFeatures:
+def with_changes(
+    f: ConditionFeatures, p: ProductParams, **changes: Any
+) -> ConditionFeatures:
     """Counterfactual copy of ``f``; derived fields are recomputed consistently.
 
     Allowed keys: age_h, remaining_transit_h, delay_h, temp_mean_c (the maximum shifts
     with it), diurnal_amp_c, maturity, packaging, storage_mode.
     """
     allowed = {
-        "age_h", "remaining_transit_h", "delay_h", "temp_mean_c",
-        "diurnal_amp_c", "maturity", "packaging", "storage_mode",
+        "age_h",
+        "remaining_transit_h",
+        "delay_h",
+        "temp_mean_c",
+        "diurnal_amp_c",
+        "maturity",
+        "packaging",
+        "storage_mode",
     }
     unknown = set(changes) - allowed
     if unknown:
         raise ValueError(f"Unsupported changes: {sorted(unknown)}")
-    amp = np.maximum(np.asarray(f.temp_max_c, float) - np.asarray(f.temp_mean_c, float), 0.0)
+    amp = np.maximum(
+        np.asarray(f.temp_max_c, float) - np.asarray(f.temp_mean_c, float), 0.0
+    )
     if "diurnal_amp_c" in changes:
         amp = _nonneg(_arr(changes["diurnal_amp_c"], "diurnal_amp_c"), "diurnal_amp_c")
     temp_mean = _arr(changes.get("temp_mean_c", f.temp_mean_c), "temp_mean_c")
     age = _nonneg(_arr(changes.get("age_h", f.age_h), "age_h"), "age_h")
-    rem = _nonneg(_arr(changes.get("remaining_transit_h", f.remaining_transit_h), "remaining_transit_h"), "remaining_transit_h")
+    rem = _nonneg(
+        _arr(
+            changes.get("remaining_transit_h", f.remaining_transit_h),
+            "remaining_transit_h",
+        ),
+        "remaining_transit_h",
+    )
     delay = _nonneg(_arr(changes.get("delay_h", f.delay_h), "delay_h"), "delay_h")
+    if np.any(delay > rem + 1e-9):
+        raise ValueError("delay_h cannot exceed remaining_transit_h")
     exposure = age + rem
     for key in ("maturity", "packaging", "storage_mode"):
         if key in changes:
@@ -197,10 +252,15 @@ def with_changes(f: ConditionFeatures, p: ProductParams, **changes: Any) -> Cond
         maturity=changes.get("maturity", f.maturity),
         packaging=changes.get("packaging", f.packaging),
         storage_mode=changes.get("storage_mode", f.storage_mode),
-        age_h=_unwrap(age), remaining_transit_h=_unwrap(rem), delay_h=_unwrap(delay),
-        temp_mean_c=_unwrap(temp_mean), temp_max_c=_unwrap(temp_mean + amp),
+        age_h=_unwrap(age),
+        remaining_transit_h=_unwrap(rem),
+        delay_h=_unwrap(delay),
+        temp_mean_c=_unwrap(temp_mean),
+        temp_max_c=_unwrap(temp_mean + amp),
         exposure_h=_unwrap(exposure),
-        degree_hours_above_ref=_unwrap(np.maximum(temp_mean - p.t_ref_c, 0.0) * exposure),
+        degree_hours_above_ref=_unwrap(
+            np.maximum(temp_mean - p.t_ref_c, 0.0) * exposure
+        ),
     )
 
 
@@ -210,7 +270,9 @@ def n_rows(f: ConditionFeatures) -> int:
     return int(np.prod(np.broadcast_shapes(*shapes))) if shapes else 1
 
 
-def to_matrix(f: ConditionFeatures, columns: tuple[str, ...] = MODEL_COLUMNS) -> np.ndarray:
+def to_matrix(
+    f: ConditionFeatures, columns: tuple[str, ...] = MODEL_COLUMNS
+) -> np.ndarray:
     """Numeric matrix (n_rows, n_columns); categorical columns become integer codes."""
     shape = np.broadcast_shapes(*[np.shape(getattr(f, n)) for n in MODEL_COLUMNS])
     shape = shape if shape else (1,)
@@ -232,6 +294,10 @@ def from_arrays(cols: Mapping[str, Any], product: str = "tomato") -> ConditionFe
     def get(name: str) -> Any:
         v = cols[name]
         v = v.to_numpy() if hasattr(v, "to_numpy") else v
-        return np.asarray(v, dtype=object) if name in CATEGORICAL_FEATURES else _arr(v, name)
+        return (
+            np.asarray(v, dtype=object)
+            if name in CATEGORICAL_FEATURES
+            else _arr(v, name)
+        )
 
     return ConditionFeatures(product=product, **{c: get(c) for c in MODEL_COLUMNS})

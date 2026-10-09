@@ -43,7 +43,9 @@ def thermal_factor(temp_mean_c, temp_max_c, p: ProductParams):
 def degradation_rate(temp_mean_c, temp_max_c, maturity, k_lot, p: ProductParams):
     """Decay rate k (1/h) of the mean quality."""
     m_mat = lookup(p.maturity, maturity, "maturity")
-    return p.k_ref * thermal_factor(temp_mean_c, temp_max_c, p) * m_mat * np.asarray(k_lot)
+    return (
+        p.k_ref * thermal_factor(temp_mean_c, temp_max_c, p) * m_mat * np.asarray(k_lot)
+    )
 
 
 def mean_quality(rate, hours):
@@ -58,7 +60,9 @@ def mean_quality(rate, hours):
 def grade_fractions(q_mean, p: ProductParams) -> np.ndarray:
     """Fractions of fruit in grades A, B, C, D; array of shape (4, *shape(q_mean))."""
     q = np.clip(np.asarray(q_mean, dtype=float), _EPS, 1.0)
-    below = [ndtr(np.log(th / q) / p.sigma_h) for th, _ in p.grades]  # P(q_i < threshold)
+    below = [
+        ndtr(np.log(th / q) / p.sigma_h) for th, _ in p.grades
+    ]  # P(q_i < threshold)
     fa = 1.0 - below[0]
     fb = below[0] - below[1]
     fc = below[1] - below[2]

@@ -1,0 +1,28 @@
+name: core
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    paths:
+      - "core/**"
+      - "data/reference/products.yaml"
+      - ".github/workflows/core.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install core and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e core pytest ruff
+      - name: Compile Python sources
+        run: python -m compileall -q core/salva_core core/tests
+      - name: Check formatting and lint
+        run: ruff format --check core && ruff check core
+      - name: Run tests
+        run: python -m pytest core/tests -q

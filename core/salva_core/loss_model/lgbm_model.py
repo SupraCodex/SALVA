@@ -34,7 +34,7 @@ class QuantileBooster:
         raw = np.asarray(self.booster.predict(x, pred_contrib=pred_contrib))
         if pred_contrib:
             raw = raw.copy()
-            raw[:, -1] += self.init           # bias column
+            raw[:, -1] += self.init  # bias column
             return raw
         return raw + self.init
 
@@ -51,8 +51,13 @@ class LightGbmLossModel:
     below 5% and above 95%).
     """
 
-    def __init__(self, models: dict[float, Any], params: ProductParams,
-                 version: str, metadata: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        models: dict[float, Any],
+        params: ProductParams,
+        version: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         missing = [q for q in QUANTILES if q not in models]
         if missing:
             raise ValueError(f"Missing quantile models: {missing}")
@@ -69,11 +74,15 @@ class LightGbmLossModel:
     def sample_loss(self, f: ConditionFeatures, u) -> np.ndarray:
         return interp_quantiles(self.quantile_matrix(f), _LEVELS, u)
 
-    def predict(self, f: ConditionFeatures, *, with_factors: bool = False) -> LossDistribution:
+    def predict(
+        self, f: ConditionFeatures, *, with_factors: bool = False
+    ) -> LossDistribution:
         # Only the three models needed for P10/P50/P90 are evaluated (the 5% and 95% models
         # cost about as much as the other five together); sorting enforces P10 <= P50 <= P90.
         x = to_matrix(f)
-        q = sort_and_clip(np.column_stack([self.models[lv].predict(x) for lv in (0.10, 0.50, 0.90)]))
+        q = sort_and_clip(
+            np.column_stack([self.models[lv].predict(x) for lv in (0.10, 0.50, 0.90)])
+        )
         p10, p50, p90 = q[:, 0], q[:, 1], q[:, 2]
         if n_rows(f) == 1:
             p10, p50, p90 = float(p10[0]), float(p50[0]), float(p90[0])
@@ -93,7 +102,9 @@ class LightGbmLossModel:
         return np.asarray(self.models[0.50].predict(to_matrix(f), pred_contrib=True))
 
     @classmethod
-    def load(cls, path: str | Path, params: ProductParams | None = None) -> LightGbmLossModel:
+    def load(
+        cls, path: str | Path, params: ProductParams | None = None
+    ) -> LightGbmLossModel:
         import joblib
 
         folder = Path(path)
@@ -104,7 +115,13 @@ class LightGbmLossModel:
                 f"code has {schema_hash()[:8]} (feature version {feature_schema()['version']})"
             )
         if list(meta.get("feature_columns", [])) != list(MODEL_COLUMNS):
-            raise ModelSchemaMismatch("Feature column order differs from the packaged model")
+            raise ModelSchemaMismatch(
+                "Feature column order differs from the packaged model"
+            )
         models = joblib.load(folder / "models.joblib")
-        return cls(models, params or load_product(meta.get("product", "tomato")),
-                   version=meta["model_version"], metadata=meta)
+        return cls(
+            models,
+            params or load_product(meta.get("product", "tomato")),
+            version=meta["model_version"],
+            metadata=meta,
+        )

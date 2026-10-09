@@ -13,7 +13,7 @@ def p() -> ProductParams:
 
 def test_reference_rate_and_quality(p):
     rate = k.degradation_rate(p.t_ref_c, p.t_ref_c, "breaker", 1.0, p)
-    assert rate == pytest.approx(p.k_ref)          # I0(0)=1, q10**0=1, m_mat(breaker)=1
+    assert rate == pytest.approx(p.k_ref)  # I0(0)=1, q10**0=1, m_mat(breaker)=1
     assert k.mean_quality(rate, 168.0) == pytest.approx(np.exp(-p.k_ref * 168.0))
 
 
@@ -32,10 +32,16 @@ def test_quality_decreases_with_temperature(p):
 
 def test_loss_increases_with_time_and_temperature(p):
     h = np.linspace(0, 300, 120)
-    loss_t = k.value_loss(k.mean_quality(k.degradation_rate(27, 32, "breaker", 1.0, p), h), "crate", p)
+    loss_t = k.value_loss(
+        k.mean_quality(k.degradation_rate(27, 32, "breaker", 1.0, p), h), "crate", p
+    )
     assert np.all(np.diff(loss_t) >= -1e-12)
     t = np.linspace(10, 40, 120)
-    loss_c = k.value_loss(k.mean_quality(k.degradation_rate(t, t + 5, "breaker", 1.0, p), 72.0), "crate", p)
+    loss_c = k.value_loss(
+        k.mean_quality(k.degradation_rate(t, t + 5, "breaker", 1.0, p), 72.0),
+        "crate",
+        p,
+    )
     assert np.all(np.diff(loss_c) >= -1e-12)
 
 
@@ -50,7 +56,9 @@ def test_bounds(p):
     t = rng.uniform(0, 50, 5000)
     h = rng.uniform(0, 700, 5000)
     kl = np.exp(rng.normal(0, 1.0, 5000))
-    q = k.mean_quality(k.degradation_rate(t, t + rng.uniform(0, 12, 5000), "ripe", kl, p), h)
+    q = k.mean_quality(
+        k.degradation_rate(t, t + rng.uniform(0, 12, 5000), "ripe", kl, p), h
+    )
     loss = k.value_loss(q, "sack", p)
     assert np.all((q > 0) & (q <= 1))
     assert np.all((loss >= 0) & (loss <= 1))
@@ -61,8 +69,8 @@ def test_grade_fractions_sum_to_one_and_extremes(p):
     frac = k.grade_fractions(q, p)
     assert np.allclose(frac.sum(axis=0), 1.0)
     assert np.all(frac >= -1e-12)
-    assert frac[3, 0] > 0.99         # almost everything lost
-    assert frac[0, 3] > 0.9          # almost everything grade A
+    assert frac[3, 0] > 0.99  # almost everything lost
+    assert frac[0, 3] > 0.9  # almost everything grade A
 
 
 def test_value_fraction_monotone_in_quality(p):
@@ -90,12 +98,20 @@ def test_maturity_ordering(p):
 
 def test_packaging_effect(p):
     q = 0.7
-    assert k.value_loss(q, "crate", p) < k.value_loss(q, "carton", p) < k.value_loss(q, "sack", p)
+    assert (
+        k.value_loss(q, "crate", p)
+        < k.value_loss(q, "carton", p)
+        < k.value_loss(q, "sack", p)
+    )
 
 
 def test_deterministic(p):
-    a = k.value_loss(k.mean_quality(k.degradation_rate(30, 35, "ripe", 1.3, p), 50.0), "sack", p)
-    b = k.value_loss(k.mean_quality(k.degradation_rate(30, 35, "ripe", 1.3, p), 50.0), "sack", p)
+    a = k.value_loss(
+        k.mean_quality(k.degradation_rate(30, 35, "ripe", 1.3, p), 50.0), "sack", p
+    )
+    b = k.value_loss(
+        k.mean_quality(k.degradation_rate(30, 35, "ripe", 1.3, p), 50.0), "sack", p
+    )
     assert a == b
 
 
