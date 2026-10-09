@@ -66,8 +66,26 @@ class LightGbmLossModel:
         self.version = version
         self.metadata = metadata or {}
 
+    def _matrix(self, f: ConditionFeatures) -> tuple[np.ndarray, tuple[str, ...]]:
+        """Encode and clip statistical-model inputs to documented calibration bounds."""
+        x = to_matrix(f).copy()
+        outside: list[str] = []
+        for name, bounds in self.params.valid_ranges.items():
+            if name not in MODEL_COLUMNS:
+                continue
+            index = MODEL_COLUMNS.index(name)
+            values = x[:, index]
+            if np.any((values < bounds["min"]) | (values > bounds["max"])):
+                outside.append(name)
+                x[:, index] = np.clip(values, bounds["min"], bounds["max"])
+        return x, tuple(sorted(outside))
+
+    def extrapolated_features(self, f: ConditionFeatures) -> tuple[str, ...]:
+        """Names of calibration-bounded features that required clipping."""
+        return self._matrix(f)[1]
+
     def quantile_matrix(self, f: ConditionFeatures) -> np.ndarray:
-        x = to_matrix(f)
+        x, _ = self._matrix(f)
         raw = np.column_stack([self.models[q].predict(x) for q in QUANTILES])
         return sort_and_clip(raw)
 
@@ -79,19 +97,39 @@ class LightGbmLossModel:
     ) -> LossDistribution:
         # Only the three models needed for P10/P50/P90 are evaluated (the 5% and 95% models
         # cost about as much as the other five together); sorting enforces P10 <= P50 <= P90.
-        x = to_matrix(f)
+        x, extrapolated = self._matrix(f)
         q = sort_and_clip(
             np.column_stack([self.models[lv].predict(x) for lv in (0.10, 0.50, 0.90)])
         )
         p10, p50, p90 = q[:, 0], q[:, 1], q[:, 2]
         if n_rows(f) == 1:
-            p10, p50, p90 = float(p10[0]), float(p50[0]), float(p90[0])
+            distribution = LossDistribution(
+                p10=float(p10[0]),
+                p50=float(p50[0]),
+                p90=float(p90[0]),
+                top_factors=None,
+                extrapolated_features=extrapolated,
+            )
+        else:
+            distribution = LossDistribution(
+                p10=p10,
+                p50=p50,
+                p90=p90,
+                top_factors=None,
+                extrapolated_features=extrapolated,
+            )
         factors = None
         if with_factors and n_rows(f) == 1:
             from .factors import explain
 
             factors = explain(self, f, self.params)
-        return LossDistribution(p10=p10, p50=p50, p90=p90, top_factors=factors)
+        return LossDistribution(
+            p10=distribution.p10,
+            p50=distribution.p50,
+            p90=distribution.p90,
+            top_factors=factors,
+            extrapolated_features=extrapolated,
+        )
 
     def shap_contributions(self, f: ConditionFeatures) -> np.ndarray:
         """Exact TreeSHAP values of the P50 model, shape (n_rows, n_features + 1).
@@ -99,7 +137,8 @@ class LightGbmLossModel:
         Last column is the bias.  Built into LightGBM (pred_contrib), no extra dependency.
         Raw per-feature values; user-facing factors come from factors.explain().
         """
-        return np.asarray(self.models[0.50].predict(to_matrix(f), pred_contrib=True))
+        x, _ = self._matrix(f)
+        return np.asarray(self.models[0.50].predict(x, pred_contrib=True))
 
     @classmethod
     def load(
@@ -117,6 +156,11 @@ class LightGbmLossModel:
         if list(meta.get("feature_columns", [])) != list(MODEL_COLUMNS):
             raise ModelSchemaMismatch(
                 "Feature column order differs from the packaged model"
+            )
+        if params is not None and meta.get("product", "tomato") != params.name:
+            raise ModelSchemaMismatch(
+                f"Model product {meta.get('product', 'tomato')!r} does not match "
+                f"requested product {params.name!r}"
             )
         models = joblib.load(folder / "models.joblib")
         return cls(

@@ -124,7 +124,7 @@ def analyze_sensitivity(
 
 def _grid_values(values: Sequence[float], field: str) -> tuple[float, ...]:
     """Validate and normalize one sensitivity axis."""
-    result = tuple(float(value) for value in values)
+    result = tuple(sorted(float(value) for value in values))
     if not result or len(set(result)) != len(result):
         raise ValueError(f"{field} must contain at least one distinct value")
     if not all(np.isfinite(value) for value in result):

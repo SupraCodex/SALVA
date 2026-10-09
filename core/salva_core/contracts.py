@@ -104,6 +104,7 @@ class LossDistribution:
     p50: Num
     p90: Num
     top_factors: list[tuple[str, float]] | None = field(default=None)
+    extrapolated_features: tuple[str, ...] = ()
 
 
 @runtime_checkable

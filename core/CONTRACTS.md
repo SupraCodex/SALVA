@@ -18,6 +18,19 @@ whole-lot decision if its route or storage capacity is less than `Lot.kg`; it ca
 participate in a partial allocation. The backend should render infeasibility and
 `NO_CLEAR_WINNER` explicitly rather than replace them with a default action.
 
+`ScenarioResult.as_dict()` exposes `extrapolation_warnings` as feature-name codes. These
+identify effective numeric features outside configured calibration ranges. The kinetic
+reference keeps the physical values; LightGBM clips to the configured ranges before
+prediction. The backend should surface a warning instead of presenting such a prediction as
+calibrated.
+
+`Recommendation.as_dict()` includes the stable `assumptions` codes required by RM-6, in
+addition to confidence and rationale. The backend should render those assumptions in the
+selected language rather than hiding them in explanatory prose.
+`confidence="high"` requires both the configured probability and a material score gap to an
+actual second candidate. With exactly one eligible scenario, the gap is `None` (not an
+invented 100% gap) and confidence cannot be `high` solely by construction.
+
 ## Additive input clarifications in `contracts.Option`
 
 | Field | Core meaning | Integration note |
@@ -75,3 +88,5 @@ used for the economic result.
 `analyze_sensitivity` is an optional grid API over temperature and delay. It calls the
 production simulation and recommendation paths for every grid cell and reports actual
 action transitions; it does not fit a second surrogate model.
+Its returned axes are sorted ascending, so each transition follows increasing temperature
+or delay regardless of the caller's input order.

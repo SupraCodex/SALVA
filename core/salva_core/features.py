@@ -143,9 +143,11 @@ def assemble(
     if np.any(factor <= 0):
         raise ValueError("transit_factor must be > 0")
     air = _arr(temp_air_c, "temp_air_c")
-    rng = p.valid_ranges.get("temp_mean_c")
-    if rng and (np.any(air < rng["min"]) or np.any(air > rng["max"])):
-        raise ValueError(f"temp_air_c must be within [{rng['min']}, {rng['max']}] degC")
+    air_range = p.valid_ranges.get("temp_mean_c")
+    if air_range and (np.any(air < air_range["min"]) or np.any(air > air_range["max"])):
+        raise ValueError(
+            f"temp_air_c must be within [{air_range['min']}, {air_range['max']}] degC"
+        )
     amp = p.default_diurnal_amp_c if diurnal_amp_c is None else diurnal_amp_c
     amp = _nonneg(_arr(amp, "diurnal_amp_c"), "diurnal_amp_c")
 
@@ -203,6 +205,23 @@ def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionF
         storage_mode=opt.storage_mode,
         product=lot.product,
     )
+
+
+def out_of_range_features(f: ConditionFeatures, p: ProductParams) -> tuple[str, ...]:
+    """Return configured numeric features with any value outside calibration bounds.
+
+    This is diagnostic only: the kinetic reference model keeps the physical values, while
+    statistical models may clip them at their inference boundary. Warnings are explicit so
+    callers cannot confuse extrapolation with validated model support.
+    """
+    outside: list[str] = []
+    for name, bounds in p.valid_ranges.items():
+        if name not in MODEL_COLUMNS:
+            continue
+        values = np.asarray(getattr(f, name), dtype=float)
+        if np.any((values < bounds["min"]) | (values > bounds["max"])):
+            outside.append(name)
+    return tuple(sorted(outside))
 
 
 def with_changes(

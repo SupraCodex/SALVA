@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,18 @@ import numpy as np
 import yaml
 
 VALID_SOURCES = ("literature", "interview", "assumption")
+VALID_RANGE_FEATURES = {
+    "age_h",
+    "temp_mean_c",
+    "temp_max_c",
+    "degree_hours_above_ref",
+    "remaining_transit_h",
+    "delay_h",
+    "exposure_h",
+}
+EXPECTED_MATURITIES = {"green", "breaker", "ripe"}
+EXPECTED_PACKAGINGS = {"crate", "carton", "sack"}
+EXPECTED_STORAGE_MODES = {"none", "ambient_shade", "ventilated", "cold_room"}
 REQUIRED_SCALARS = (
     "t_ref_c",
     "k_ref",
@@ -97,7 +110,9 @@ class ProductParams:
             ) from exc
 
 
-def lookup(mapping: dict[str, float], keys: Any, what: str = "category") -> Any:
+def lookup(
+    mapping: Mapping[str, float | int], keys: Any, what: str = "category"
+) -> Any:
     """Vectorised dict lookup. ``keys`` may be a str or an array of str."""
     if isinstance(keys, str):
         if keys not in mapping:
@@ -133,7 +148,74 @@ def _entry_value(name: str, entry: Any, product: str) -> tuple[Any, str]:
     return entry["value"], entry["source"]
 
 
+def _as_finite_float(value: Any, context: str) -> float:
+    if isinstance(value, bool):
+        raise ParamsError(f"{context}: boolean is not a numeric parameter")
+    try:
+        result = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ParamsError(f"{context}: expected a finite number") from exc
+    if not np.isfinite(result):
+        raise ParamsError(f"{context}: expected a finite number")
+    return result
+
+
 def _validate(p: ProductParams) -> None:
+    scalar_values = (
+        p.t_ref_c,
+        p.k_ref,
+        p.q10,
+        p.sigma_h,
+        p.sigma_lot,
+        p.delta,
+        p.default_diurnal_amp_c,
+        p.shelf_life_loss_threshold,
+    )
+    if not all(np.isfinite(value) for value in scalar_values):
+        raise ParamsError(f"{p.name}: scalar parameters must all be finite")
+    for key, mapping in (
+        ("maturity", p.maturity),
+        ("pack_delta_c", p.pack_delta_c),
+        ("pack_damage", p.pack_damage),
+        ("storage_temp_offset_c", p.storage_temp_offset_c),
+        ("risk_thresholds", p.risk_thresholds),
+    ):
+        if not all(np.isfinite(value) for value in mapping.values()):
+            raise ParamsError(f"{p.name}.{key}: values must all be finite")
+    for key, mapping, expected in (
+        ("maturity", p.maturity, EXPECTED_MATURITIES),
+        ("pack_delta_c", p.pack_delta_c, EXPECTED_PACKAGINGS),
+        ("pack_damage", p.pack_damage, EXPECTED_PACKAGINGS),
+        ("storage_temp_offset_c", p.storage_temp_offset_c, EXPECTED_STORAGE_MODES),
+    ):
+        if set(mapping) != expected:
+            raise ParamsError(
+                f"{p.name}.{key}: expected categories {sorted(expected)}, "
+                f"got {sorted(mapping)}"
+            )
+    if not isinstance(p.valid_ranges, dict):
+        raise ParamsError(f"{p.name}.valid_ranges must be a mapping")
+    for feature, bounds in p.valid_ranges.items():
+        try:
+            lower = _as_finite_float(
+                bounds["min"], f"{p.name}.valid_ranges.{feature}.min"
+            )
+            upper = _as_finite_float(
+                bounds["max"], f"{p.name}.valid_ranges.{feature}.max"
+            )
+            valid_bounds = (
+                isinstance(bounds, dict)
+                and {"min", "max"} <= set(bounds)
+                and np.isfinite(lower)
+                and np.isfinite(upper)
+                and lower <= upper
+            )
+        except (KeyError, TypeError, ValueError):
+            valid_bounds = False
+        if feature not in VALID_RANGE_FEATURES or not valid_bounds:
+            raise ParamsError(
+                f"{p.name}.valid_ranges.{feature}: expected finite min <= max"
+            )
     if not (p.k_ref > 0 and p.q10 >= 1 and p.sigma_h > 0 and p.sigma_lot >= 0):
         raise ParamsError(
             f"{p.name}: k_ref>0, q10>=1, sigma_h>0, sigma_lot>=0 required"
@@ -196,12 +278,18 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
         raise ParamsError(f"Products file not found: {p}")
     raw_bytes = p.read_bytes()
     doc = yaml.safe_load(raw_bytes)
+    if not isinstance(doc, dict):
+        raise ParamsError("Products file root must be a mapping")
     sha = hashlib.sha256(raw_bytes).hexdigest()
     products: dict[str, ProductParams] = {}
     for name, body in doc.items():
         if name == "schema_version":
             continue
+        if not isinstance(body, dict):
+            raise ParamsError(f"{name}: product entry must be a mapping")
         params = body.get("parameters", {})
+        if not isinstance(params, dict):
+            raise ParamsError(f"{name}.parameters must be a mapping")
         sources: dict[str, str] = {}
         scalars: dict[str, float] = {}
         mappings: dict[str, dict[str, float]] = {}
@@ -209,7 +297,7 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
             if key not in params:
                 raise ParamsError(f"{name}: missing parameter '{key}'")
             val, src = _entry_value(key, params[key], name)
-            scalars[key] = float(val)
+            scalars[key] = _as_finite_float(val, f"{name}.{key}")
             sources[key] = src
         for key in REQUIRED_MAPPINGS:
             if key not in params:
@@ -217,19 +305,50 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
             val, src = _entry_value(key, params[key], name)
             if not isinstance(val, dict) or not val:
                 raise ParamsError(f"{name}.{key}: value must be a non-empty mapping")
-            mappings[key] = {str(k): float(v) for k, v in val.items()}
+            mappings[key] = {
+                str(k): _as_finite_float(v, f"{name}.{key}.{k}") for k, v in val.items()
+            }
             sources[key] = src
         if "grades" not in params:
             raise ParamsError(f"{name}: missing parameter 'grades'")
         gval, gsrc = _entry_value("grades", params["grades"], name)
         sources["grades"] = gsrc
-        grades = tuple((float(a), float(b)) for a, b in gval)
+        if not isinstance(gval, (list, tuple)):
+            raise ParamsError(
+                f"{name}.grades: expected a list of threshold/multiplier pairs"
+            )
+        try:
+            grades = tuple(
+                (
+                    _as_finite_float(a, f"{name}.grades.threshold"),
+                    _as_finite_float(b, f"{name}.grades.multiplier"),
+                )
+                for a, b in gval
+            )
+        except (TypeError, ValueError) as exc:
+            raise ParamsError(
+                f"{name}.grades: expected threshold/multiplier pairs"
+            ) from exc
+        valid_ranges = body.get("valid_ranges", {})
+        if not isinstance(valid_ranges, dict):
+            raise ParamsError(f"{name}.valid_ranges must be a mapping")
         product = ProductParams(
             name=name,
-            **scalars,
-            **mappings,
+            t_ref_c=scalars["t_ref_c"],
+            k_ref=scalars["k_ref"],
+            q10=scalars["q10"],
+            sigma_h=scalars["sigma_h"],
+            sigma_lot=scalars["sigma_lot"],
+            delta=scalars["delta"],
+            default_diurnal_amp_c=scalars["default_diurnal_amp_c"],
+            shelf_life_loss_threshold=scalars["shelf_life_loss_threshold"],
+            maturity=mappings["maturity"],
+            pack_delta_c=mappings["pack_delta_c"],
+            pack_damage=mappings["pack_damage"],
+            storage_temp_offset_c=mappings["storage_temp_offset_c"],
+            risk_thresholds=mappings["risk_thresholds"],
             grades=grades,
-            valid_ranges=body.get("valid_ranges", {}),
+            valid_ranges=valid_ranges,
             sources=sources,
             file_sha256=sha,
         )

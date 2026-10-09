@@ -116,6 +116,13 @@ def run_all(
                     net_p50=None,
                     net_p90=None,
                     infeasible_reason=reason,
+                    discouraged=shelf_life_exceeded,
+                    discouraged_reason=(
+                        "SHELF_LIFE_P50_EXCEEDED" if shelf_life_exceeded else None
+                    ),
+                    extrapolation_warnings=draws_by_id[
+                        option.id
+                    ].extrapolation_warnings,
                     temp_mean_c=draws_by_id[option.id].temp_mean_c,
                     temp_max_c=draws_by_id[option.id].temp_max_c,
                     delay_h=float(lot.delay_h),

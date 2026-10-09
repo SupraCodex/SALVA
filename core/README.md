@@ -57,6 +57,11 @@ convenience API that creates the shocks and calls the same adapter.
 7. **Sensitivity:** `analyze_sensitivity` evaluates a temperature/delay grid through the
    same `run_all` and recommendation code, with one common shock bundle for every cell, and
    reports only actual action boundaries.
+8. **Extrapolation:** configured calibration ranges are checked against effective features.
+   The kinetic reference keeps physical inputs and reports out-of-range features; LightGBM
+   clips at inference and reports the same warnings in predictions and scenario JSON.
+9. **Recommendation assumptions:** recommendations expose stable assumption codes for the
+   model estimate, product calibration and market-absorption hypothesis.
 
 ## Contract notes for P3 / backend
 
@@ -78,17 +83,23 @@ routes and markets within each draw. This correctly pairs alternatives for commo
 number comparisons, but it does **not** model independent market-specific prices or demand;
 that requires a versioned P3 contract extension, not an implicit shape change here.
 
-## Boundaries and unimplemented requirements
+## Boundaries and unresolved integration points
 
-- Sensitivity analysis is explicitly optional in the design and is not part of this MVP.
-- The current LossModel contract returns value-loss distributions, not P50 remaining shelf
-  life. Therefore core does not guess a shelf-life threshold to mark a route `discouraged`.
-  The recommendation layer honors `ScenarioResult.discouraged` when a validated upstream
-  rule supplies it; an explicit shelf-life contract is needed to automate RM-4.
+- Sensitivity analysis is optional in the product MVP but is implemented as a core API; it is
+  not required for the basic simulation/recommendation call path.
+- RM-4 is implemented only when the selected model exposes
+  `remaining_shelf_life_p50_h(features)`. The kinetic threshold and its temperature-history
+  simplification remain assumptions, not a validated expiry guarantee. Adapters without this
+  optional capability do not receive an invented shelf-life estimate.
 - Multi-period pricing, endogenous price response, multi-lot optimization, fixed-charge
   routing, contracts, payment delays, quality safety decisions, non-tomato products and
   validation against field outcomes are out of scope. Product values and market capacities
   remain assumptions until calibrated.
+- The current one-dimensional `Shocks.price` and `Shocks.absorb` vectors are shared across
+  markets. Independent market-specific shocks require a reviewed, versioned P3/backend
+  contract change; core does not silently reinterpret the existing vectors.
+- Extrapolation-warning and recommendation-assumption fields are additive proposals and
+  should be reviewed by P3/backend before integration.
 - No LLM produces or edits numeric results. The exact simulation arrays and summaries are
   source-of-truth outputs.
 
@@ -105,8 +116,10 @@ artifacts; the project team must complete and review them separately.
 Run from the repository root:
 
 ```bash
-python -m pip install -e core pytest
-python -m pytest core/tests -q
+python -m pip install -e "core[dev]"
+python -m pytest core/tests -q --cov=salva_core --cov-fail-under=70
+ruff format --check core && ruff check core
+mypy core/salva_core --ignore-missing-imports
 ```
 
 The core remains importable as a pure Python package. `scipy.optimize.linprog` uses the

@@ -9,7 +9,7 @@ from math import isfinite
 import numpy as np
 
 from ..contracts import LossDistribution, Lot, Option, Shocks
-from ..features import assemble, build
+from ..features import assemble, build, out_of_range_features
 from ..params import ProductParams
 from ..risk import classify_risk
 from .models import AllocationPlan, ScenarioResult
@@ -32,6 +32,7 @@ class OptionDraws:
     temp_mean_c: float
     temp_max_c: float
     remaining_shelf_life_p50_h: float | None = None
+    extrapolation_warnings: tuple[str, ...] = ()
 
 
 def _finite_nonnegative(value: float, field: str) -> float:
@@ -150,6 +151,7 @@ def option_draws(
         temp_mean_c=float(np.asarray(baseline.temp_mean_c).flat[0]),
         temp_max_c=float(np.asarray(baseline.temp_max_c).flat[0]),
         remaining_shelf_life_p50_h=shelf_life,
+        extrapolation_warnings=out_of_range_features(f, params),
     )
 
 
@@ -214,6 +216,7 @@ def evaluate_portfolio(
     market_y: dict[int, np.ndarray] = {}
     market_meta: dict[int, tuple[float, float]] = {}
     market_surplus = np.zeros(n)
+    extrapolation_warnings: set[str] = set()
 
     for option_id, qty in allocations.items():
         if qty <= _TOL:
@@ -225,6 +228,7 @@ def evaluate_portfolio(
             raise EconomicsError(
                 f"missing or malformed LossModel draws for option {option_id}"
             )
+        extrapolation_warnings.update(od.extrapolation_warnings)
         y = qty * od.value_fraction
         recoverable += y
         cost_total += qty * option.cost
@@ -274,9 +278,9 @@ def evaluate_portfolio(
     absorb_factor = s.absorb
     for market_id, y in market_y.items():
         price, absorb_kg = market_meta[market_id]
-        capacity = absorb_kg * absorb_factor
-        full_price_eq = np.minimum(y, capacity)
-        surplus_eq = np.maximum(y - capacity, 0.0)
+        market_capacity_draws = absorb_kg * absorb_factor
+        full_price_eq = np.minimum(y, market_capacity_draws)
+        surplus_eq = np.maximum(y - market_capacity_draws, 0.0)
         gross += price * price_factor * (full_price_eq + params.delta * surplus_eq)
         market_surplus += surplus_eq
 
@@ -327,6 +331,7 @@ def evaluate_portfolio(
         delay_h=float(lot.delay_h),
         extra_h=weighted_extra_h / total_allocated if total_allocated > _TOL else 0.0,
         cost_p50=float(cost_total),
+        extrapolation_warnings=tuple(sorted(extrapolation_warnings)),
     )
 
 
@@ -367,6 +372,19 @@ def evaluate(
             net_p50=None,
             net_p90=None,
             infeasible_reason=reason,
+            discouraged=(
+                od.remaining_shelf_life_p50_h is not None
+                and lot.remaining_h + option.extra_h
+                > od.remaining_shelf_life_p50_h + 1e-9
+            ),
+            discouraged_reason=(
+                "SHELF_LIFE_P50_EXCEEDED"
+                if od.remaining_shelf_life_p50_h is not None
+                and lot.remaining_h + option.extra_h
+                > od.remaining_shelf_life_p50_h + 1e-9
+                else None
+            ),
+            extrapolation_warnings=od.extrapolation_warnings,
             temp_mean_c=od.temp_mean_c,
             temp_max_c=od.temp_max_c,
             delay_h=float(lot.delay_h),

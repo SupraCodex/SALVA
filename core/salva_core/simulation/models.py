@@ -112,6 +112,7 @@ class ScenarioResult:
     delay_h: float = 0.0
     extra_h: float = 0.0
     cost_p50: float = 0.0
+    extrapolation_warnings: tuple[str, ...] = ()
 
     @property
     def net_value_p10(self) -> float | None:
@@ -168,6 +169,7 @@ class ScenarioResult:
             "delay_h": self.delay_h,
             "extra_h": self.extra_h,
             "cost_p50_fcfa": self.cost_p50,
+            "extrapolation_warnings": list(self.extrapolation_warnings),
         }
         if self.allocation is not None:
             out["allocation"] = self.allocation.as_dict()

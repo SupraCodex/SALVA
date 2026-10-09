@@ -7,6 +7,11 @@ from math import isfinite
 from typing import Literal
 
 Confidence = Literal["high", "medium", "low", "none"]
+DEFAULT_ASSUMPTIONS = (
+    "MODEL_BASED_ESTIMATE_NOT_GUARANTEE",
+    "PRODUCT_PARAMETERS_REQUIRE_CALIBRATION",
+    "MARKET_ABSORPTION_IS_AN_ASSUMPTION",
+)
 
 
 @dataclass(frozen=True)
@@ -78,8 +83,23 @@ class Recommendation:
     prob_best: float
     gap_fraction: float | None
     no_clear_winner: bool
+    assumptions: tuple[str, ...] = DEFAULT_ASSUMPTIONS
 
     @property
     def best_option_id(self) -> str | None:
         """Readable alias; ``best_id`` is retained for the P3 adapter contract."""
         return self.best_id
+
+    def as_dict(self) -> dict[str, object]:
+        """Serialize stable decision fields, including the assumptions for RM-6."""
+        return {
+            "best_id": self.best_id,
+            "confidence": self.confidence,
+            "rationale_codes": list(self.rationale_codes),
+            "ranked_ids": list(self.ranked_ids),
+            "scores_fcfa": dict(self.scores_fcfa),
+            "prob_best": self.prob_best,
+            "gap_fraction": self.gap_fraction,
+            "no_clear_winner": self.no_clear_winner,
+            "assumptions": list(self.assumptions),
+        }

@@ -7,15 +7,17 @@ from collections.abc import Sequence
 import numpy as np
 
 from ..simulation.models import ScenarioResult
-from .policy import Policy, Recommendation
+from .policy import Confidence, Policy, Recommendation
 from .rationale import rationale_codes
 
 
 def _score(result: ScenarioResult, policy: Policy) -> float:
-    if result.net_p10 is None or result.net_p50 is None:
-        raise ValueError(f"feasible result {result.id} is missing net P10/P50")
+    if result.net_p10 is None or result.net_p50 is None or result.net_p90 is None:
+        raise ValueError(f"feasible result {result.id} is missing net P10/P50/P90")
     if result.net_p10 > result.net_p50 + 1e-8:
-        raise ValueError(f"result {result.id} violates net P10 <= P50")
+        raise ValueError(f"result {result.id} violates net P10 <= P50 <= P90")
+    if result.net_p50 > result.net_p90 + 1e-8:
+        raise ValueError(f"result {result.id} violates net P10 <= P50 <= P90")
     downside = max(0.0, result.net_p50 - result.net_p10)
     return float(result.net_p50 - policy.lam * downside)
 
@@ -81,7 +83,7 @@ def recommend(
     best_score = scores[0]
     best_probability = probabilities.get(best.id, 0.0)
     if len(scores) == 1:
-        gap = 1.0
+        gap = None
     else:
         denominator = max(
             1.0,
@@ -93,6 +95,7 @@ def recommend(
 
     unclear = (
         len(scored) > 1
+        and gap is not None
         and gap < chosen_policy.materiality
         and best_probability < chosen_policy.clear_probability
     )
@@ -110,9 +113,10 @@ def recommend(
 
     if (
         best_probability >= chosen_policy.high_probability
+        and gap is not None
         and gap >= chosen_policy.high_gap_fraction
     ):
-        confidence = "high"
+        confidence: Confidence = "high"
     elif best_probability >= chosen_policy.medium_probability:
         confidence = "medium"
     else:

@@ -157,8 +157,20 @@ def test_one_candidate_is_named_without_inventing_a_tie():
     results = run_all(MonotoneLossModel(), lot, options[:1], draw(1_000, 2), p)
     rec = recommend(results)
     assert rec.best_id == "local"
-    assert rec.confidence == "high"
+    assert rec.confidence == "medium"
+    assert rec.gap_fraction is None  # no second option exists for a comparative gap
     assert "SINGLE_FEASIBLE_ACTION" in rec.rationale_codes
+
+
+def test_recommendation_rejects_missing_or_crossed_net_p90():
+    from dataclasses import replace
+
+    p, lot, options = inputs()
+    results = run_all(MonotoneLossModel(), lot, options[:1], draw(1_000, 8), p)
+    with pytest.raises(ValueError, match="P10/P50/P90"):
+        recommend([replace(results[0], net_p90=None)])
+    with pytest.raises(ValueError, match="P10 <= P50 <= P90"):
+        recommend([replace(results[0], net_p90=results[0].net_p50 - 1.0)])
 
 
 def test_invalid_policy_is_rejected():
