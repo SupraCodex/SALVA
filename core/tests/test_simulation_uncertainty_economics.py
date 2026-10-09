@@ -220,3 +220,36 @@ def test_direct_portfolio_evaluation_enforces_shared_storage_capacity():
             scenario_id="bad",
             action="optimized_split",
         )
+
+
+@pytest.mark.parametrize(
+    ("draw_changes", "message"),
+    [
+        ({"loss": np.full(100, 1.01)}, r"loss draws.*finite in \[0, 1\]"),
+        (
+            {"value_fraction": np.full(100, 0.7)},
+            "value fractions.*equal 1 - loss",
+        ),
+        (
+            {"value_fraction": np.full(100, np.nan)},
+            r"value fractions.*finite in \[0, 1\]",
+        ),
+        ({"temp_mean_c": float("inf")}, "temperatures.*finite"),
+    ],
+)
+def test_direct_portfolio_rejects_invalid_loss_model_draws(draw_changes, message):
+    params, lot, option, shocks = base_inputs(absorption=100.0)
+    base = OptionDraws(np.full(100, 0.2), np.full(100, 0.8), 25.0, 30.0)
+    invalid = replace(base, **draw_changes)
+
+    with pytest.raises(EconomicsError, match=message):
+        evaluate_portfolio(
+            lot,
+            [option],
+            {option.id: lot.kg},
+            {option.id: invalid},
+            shocks,
+            params,
+            scenario_id="invalid",
+            action=option.action,
+        )

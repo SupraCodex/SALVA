@@ -211,6 +211,41 @@ def _quantile(draws: np.ndarray, q: float) -> float:
     return float(np.quantile(draws, q, method="linear"))
 
 
+def _validated_draws(
+    od: OptionDraws, n: int, option_id: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """Enforce the loss/value invariant even for callers bypassing ``option_draws``."""
+    try:
+        loss = np.asarray(od.loss, dtype=float)
+        value = np.asarray(od.value_fraction, dtype=float)
+        temperatures = np.asarray([od.temp_mean_c, od.temp_max_c], dtype=float)
+    except (AttributeError, TypeError, ValueError, OverflowError) as exc:
+        raise EconomicsError(
+            f"malformed LossModel draws for option {option_id}"
+        ) from exc
+    if loss.shape != (n,) or value.shape != (n,):
+        raise EconomicsError(
+            f"LossModel draws for option {option_id} must be vectors of length {n}"
+        )
+    if not np.all(np.isfinite(loss)) or np.any((loss < 0.0) | (loss > 1.0)):
+        raise EconomicsError(
+            f"LossModel loss draws for option {option_id} must be finite in [0, 1]"
+        )
+    if not np.all(np.isfinite(value)) or np.any((value < 0.0) | (value > 1.0)):
+        raise EconomicsError(
+            f"LossModel value fractions for option {option_id} must be finite in [0, 1]"
+        )
+    if not np.allclose(value, 1.0 - loss, rtol=0.0, atol=1e-12):
+        raise EconomicsError(
+            f"LossModel value fractions for option {option_id} must equal 1 - loss"
+        )
+    if not np.all(np.isfinite(temperatures)):
+        raise EconomicsError(
+            f"LossModel temperatures for option {option_id} must be finite"
+        )
+    return loss, value
+
+
 def evaluate_portfolio(
     lot: Lot,
     options: Sequence[Option],
@@ -277,12 +312,13 @@ def evaluate_portfolio(
         option = by_id[option_id]
         validate_option(lot, option)
         od = draws_by_option.get(option_id)
-        if od is None or od.loss.shape != (n,):
+        if od is None:
             raise EconomicsError(
                 f"missing or malformed LossModel draws for option {option_id}"
             )
+        _, value_fraction = _validated_draws(od, n, option_id)
         extrapolation_warnings.update(od.extrapolation_warnings)
-        y = qty * od.value_fraction
+        y = qty * value_fraction
         recoverable += y
         detour_h, hold_h = option_durations(option)
         cost_total += qty * (
