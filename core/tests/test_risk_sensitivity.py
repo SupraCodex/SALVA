@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from salva_core import features
 from salva_core.contracts import LossDistribution, Lot, Market, Option
 from salva_core.loss_model import KineticLossModel

@@ -137,14 +137,17 @@ are rejected by the loader and must be reviewed/repackaged.
 - Recommendation is risk-adjusted after simulation, and never changes the underlying
   financial outputs.
 
-## Open contract gap: market-specific uncertainty
+## Market-specific uncertainty and legacy compatibility
 
-The current `Shocks.price` and `Shocks.absorb` are one-dimensional shared vectors. Core does
-not reinterpret them as two-dimensional matrices because that would be an undocumented
-breaking change. Consequently market prices/demand are perfectly co-moving under these
-shocks, contrary to the design document's independent-market assumption. A future versioned
-contract should define stable market ids and per-market shock columns/maps, with tests and
-review from P3.
+`draw(n, seed, market_ids=...)` populates independent one-dimensional vectors in
+`Shocks.price_by_market` and `Shocks.absorb_by_market`. A market's factors are reused by
+every option routed to that market within each draw, while distinct market ids receive
+independent factors. This is required for the design's independent-market assumption without
+breaking the stable legacy `Shocks.price` / `Shocks.absorb` vectors. Hand-built historical
+`Shocks` bundles may leave either mapping `None`; in that compatibility mode, the shared
+legacy vector is used for all markets. New production callers should use `draw(...,
+market_ids={...})` or supply the per-market maps explicitly. When maps are present but omit
+a particular market id, that market also uses the legacy shared vector.
 
 ## Shelf-life and risk contracts
 

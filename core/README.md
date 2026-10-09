@@ -63,14 +63,22 @@ from 100 to 20,000, as specified by the design document.
    not validated expiry guarantees.
 7. **Sensitivity:** `analyze_sensitivity` evaluates a temperature/delay grid through the
    same `run_all` and recommendation code, with one common shock bundle for every cell, and
-   reports only actual action boundaries.
-8. **Extrapolation:** physical input bounds and model calibration support are separate.
+   reports only actual action boundaries. `analyze_parameter_sensitivity` recalculates
+   product, route-cost, price, and absorption variants at ±30% (or another valid relative
+   change) on exactly the supplied shocks; product variants require `LossModel.with_params`.
+   The built-in kinetic and LightGBM adapters rebind product configuration; this does not
+   retrain fitted LightGBM trees. Unsupported adapters fail explicitly instead of silently
+   ignoring a product perturbation.
+8. **Market uncertainty:** `draw(..., market_ids=...)` returns independent price and
+   absorption vectors per market. All routes to one market share that market's factor per
+   draw. Historical shock bundles without per-market maps retain shared-vector behavior.
+9. **Extrapolation:** physical input bounds and model calibration support are separate.
    The kinetic reference keeps physical inputs; LightGBM clips to artifact calibration
    ranges (or the explicitly labelled synthetic planning envelope). Both preserve P50 and
    widen outer quantiles to the full physical loss support `[0, 1]` on extrapolated rows.
    This is intentionally conservative, not an empirically calibrated interval-expansion
    formula.
-9. **Recommendation assumptions:** recommendations expose stable assumption codes for the
+10. **Recommendation assumptions:** recommendations expose stable assumption codes for the
    model estimate, product calibration and market-absorption hypothesis.
 
 ## Contract notes for P3 / backend
@@ -91,10 +99,11 @@ maximum throughput and may exceed the lot quantity; a whole-lot single-action re
 infeasible if that route or its storage site cannot hold the entire lot, while the allocation
 LP may still use it for a partial lot.
 
-The `Shocks` contract currently supplies one `price` and one `absorb` vector, shared by all
-routes and markets within each draw. This correctly pairs alternatives for common-random-
-number comparisons, but it does **not** model independent market-specific prices or demand;
-that requires a versioned P3 contract extension, not an implicit shape change here.
+`Shocks.price_by_market` and `Shocks.absorb_by_market` are additive mappings keyed by stable
+market id; `draw(..., market_ids=...)` populates them reproducibly. Factors are independent
+between markets and common across actions within each market. The original one-dimensional
+`price` and `absorb` vectors remain available: legacy bundles without the mappings use those
+shared factors, avoiding a breaking shape change.
 `Market.absorb_kg` is mandatory. Core contains no market master data and deliberately does not
 invent a default when it is absent: P2/backend or the reference-data owner must supply a
 preloaded, modifiable per-market value and surface its assumption provenance.
@@ -111,9 +120,8 @@ preloaded, modifiable per-market value and surface its assumption provenance.
   routing, contracts, payment delays, quality safety decisions, non-tomato products and
   validation against field outcomes are out of scope. Product values and market capacities
   remain assumptions until calibrated.
-- The current one-dimensional `Shocks.price` and `Shocks.absorb` vectors are shared across
-  markets. Independent market-specific shocks require a reviewed, versioned P3/backend
-  contract change; core does not silently reinterpret the existing vectors.
+- The optional market maps are additive to the original one-dimensional shock vectors.
+  Legacy bundles without maps deliberately retain shared price/absorption factors.
 - Extrapolation-warning and recommendation-assumption fields are additive proposals and
   should be reviewed by P3/backend before integration.
 - No LLM produces or edits numeric results. The exact simulation arrays and summaries are

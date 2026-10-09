@@ -75,6 +75,16 @@ class LightGbmLossModel:
         self.metadata = metadata or {}
         self.calibration_ranges = self._load_calibration_ranges()
 
+    def with_params(self, params: ProductParams) -> LightGbmLossModel:
+        """Return an adapter over the same fitted quantiles and varied product config.
+
+        This does not retrain the booster. It changes only configuration-driven
+        feature handling, calibration support fallback, and the common physical
+        chilling adjustment, which are exactly the product-level effects available
+        to the online LossModel adapter.
+        """
+        return type(self)(self.models, params, self.version, self.metadata)
+
     def _load_calibration_ranges(self) -> dict[str, dict[str, float]]:
         """Use artifact feature support, falling back to the versioned planning envelope."""
         fallback = self.params.calibration_ranges or self.params.valid_ranges

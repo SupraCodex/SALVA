@@ -206,23 +206,31 @@ def analyze_parameter_sensitivity(
         raise ValueError("at least one option is required")
 
     chosen_policy = policy or Policy()
+    baseline_model = (
+        _model_for_params(model, params, "product.baseline")
+        if any(name.startswith("product.") for name in names)
+        else model
+    )
     baseline_rec = recommend(
-        run_all(model, lot, options, shocks, params), chosen_policy
+        run_all(baseline_model, lot, options, shocks, params), chosen_policy
     )
     points: list[ParameterSensitivityPoint] = []
     for name in names:
-        base, varied_params, varied_options = _parameter_variants(name, options, params)
+        base, _, _ = _parameter_variants(name, options, params)
         minus_value = base * (1.0 - change)
         plus_value = base * (1.0 + change)
         minus_params, minus_options = _apply_parameter(
             name, minus_value, options, params
         )
         plus_params, plus_options = _apply_parameter(name, plus_value, options, params)
+        minus_model = _model_for_params(model, minus_params, name)
+        plus_model = _model_for_params(model, plus_params, name)
         minus_rec = recommend(
-            run_all(model, lot, minus_options, shocks, minus_params), chosen_policy
+            run_all(minus_model, lot, minus_options, shocks, minus_params),
+            chosen_policy,
         )
         plus_rec = recommend(
-            run_all(model, lot, plus_options, shocks, plus_params), chosen_policy
+            run_all(plus_model, lot, plus_options, shocks, plus_params), chosen_policy
         )
         points.append(
             ParameterSensitivityPoint(
@@ -339,30 +347,100 @@ def _apply_parameter(
     if path.startswith("product."):
         fields = path.split(".")
         if len(fields) == 2:
-            params = replace(params, **{fields[1]: value})
+            scalar = fields[1]
+            if scalar == "k_ref":
+                params = replace(params, k_ref=value)
+            elif scalar == "q10":
+                params = replace(params, q10=value)
+            elif scalar == "sigma_h":
+                params = replace(params, sigma_h=value)
+            elif scalar == "sigma_lot":
+                params = replace(params, sigma_lot=value)
+            elif scalar == "delta":
+                params = replace(params, delta=value)
+            elif scalar == "default_diurnal_amp_c":
+                params = replace(params, default_diurnal_amp_c=value)
+            elif scalar == "shelf_life_loss_threshold":
+                params = replace(params, shelf_life_loss_threshold=value)
+            elif scalar == "chilling_temperature_scale_c":
+                params = replace(params, chilling_temperature_scale_c=value)
+            elif scalar == "chilling_loss_rate_per_equivalent_h":
+                params = replace(params, chilling_loss_rate_per_equivalent_h=value)
+            else:
+                raise ValueError(f"unsupported product sensitivity path {path!r}")
         else:
             mapping = dict(getattr(params, fields[1]))
             mapping[fields[2]] = value
-            params = replace(params, **{fields[1]: mapping})
+            if fields[1] == "maturity":
+                params = replace(params, maturity=mapping)
+            elif fields[1] == "pack_delta_c":
+                params = replace(params, pack_delta_c=mapping)
+            elif fields[1] == "pack_damage":
+                params = replace(params, pack_damage=mapping)
+            elif fields[1] == "storage_temp_offset_c":
+                params = replace(params, storage_temp_offset_c=mapping)
+            elif fields[1] == "chilling_threshold_c":
+                params = replace(params, chilling_threshold_c=mapping)
+            elif fields[1] == "chilling_onset_equivalent_h":
+                params = replace(params, chilling_onset_equivalent_h=mapping)
+            else:
+                raise ValueError(f"unsupported product sensitivity path {path!r}")
         _validate_product_perturbation(path, value)
         return params, list(options)
     varied: list[Option] = []
     if path.startswith("option:"):
         target, _, field_name = path[len("option:") :].rpartition(".")
-        return params, [
-            replace(option, **{field_name: value}) if option.id == target else option
-            for option in options
-        ]
+        for option in options:
+            if option.id != target:
+                varied.append(option)
+            elif field_name == "kg":
+                varied.append(replace(option, kg=value))
+            elif field_name == "extra_h":
+                varied.append(replace(option, extra_h=value))
+            elif field_name == "hold_h":
+                varied.append(replace(option, hold_h=value))
+            elif field_name == "temp_offset":
+                varied.append(replace(option, temp_offset=value))
+            elif field_name == "cost":
+                varied.append(replace(option, cost=value))
+            elif field_name == "storage_cost_fcfa_kg_day":
+                varied.append(replace(option, storage_cost_fcfa_kg_day=value))
+            elif field_name == "transport_distance_km":
+                varied.append(replace(option, transport_distance_km=value))
+            elif field_name == "transport_cost_fcfa_kg_km":
+                varied.append(replace(option, transport_cost_fcfa_kg_km=value))
+            else:
+                raise ValueError(f"unsupported option sensitivity path {path!r}")
+        return params, varied
     target, _, field_name = path[len("market:") :].rpartition(".")
     market_id = int(target)
     for option in options:
         if option.market.id != market_id:
             varied.append(option)
             continue
-        varied.append(
-            replace(option, market=replace(option.market, **{field_name: value}))
-        )
+        if field_name == "price":
+            market = replace(option.market, price=value)
+        elif field_name == "absorb_kg":
+            market = replace(option.market, absorb_kg=value)
+        else:
+            raise ValueError(f"unsupported market sensitivity path {path!r}")
+        varied.append(replace(option, market=market))
     return params, varied
+
+
+def _model_for_params(model, params: ProductParams, path: str):
+    """Rebind product-sensitive models; never report a perturbation the model ignored."""
+    if not path.startswith("product."):
+        return model
+    binder = getattr(model, "with_params", None)
+    if not callable(binder):
+        raise TypeError(
+            f"model {type(model).__name__} cannot rebind ProductParams for {path!r}"
+        )
+    varied_model = binder(params)
+    if varied_model is model or getattr(varied_model, "params", None) is not params:
+        raise TypeError("LossModel.with_params must return a model bound to new params")
+    return varied_model
 
 
 def _validate_product_perturbation(path: str, value: float) -> None:
@@ -383,7 +461,7 @@ def _validate_product_perturbation(path: str, value: float) -> None:
     if field == "shelf_life_loss_threshold" and not 0.0 < value < 1.0:
         raise ValueError(f"{path}: perturbed threshold must be in (0, 1)")
     if len(path.split(".")) == 3:
-        mapping, category = path.split(".")[1:]
+        mapping = path.split(".")[1]
         if mapping == "maturity" and value <= 0:
             raise ValueError(f"{path}: perturbed maturity multiplier must be > 0")
         if mapping == "pack_damage" and not 0.0 <= value < 1.0:
