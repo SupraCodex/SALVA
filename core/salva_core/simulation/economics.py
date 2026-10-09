@@ -96,6 +96,14 @@ def validate_option(lot: Lot, option: Option) -> None:
         option.storage_cost_fcfa_kg_day,
         f"option {option.id}.storage_cost_fcfa_kg_day",
     )
+    _finite_nonnegative(
+        option.transport_distance_km,
+        f"option {option.id}.transport_distance_km",
+    )
+    _finite_nonnegative(
+        option.transport_cost_fcfa_kg_km,
+        f"option {option.id}.transport_cost_fcfa_kg_km",
+    )
     if storage_rate > 0:
         if not option.is_store:
             raise EconomicsError(
@@ -132,6 +140,20 @@ def validate_option(lot: Lot, option: Option) -> None:
         )
         if capacity_kg <= 0:
             raise EconomicsError(f"option {option.id}.storage_capacity_kg must be > 0")
+    unit_cost_fcfa_kg(option)
+
+
+def unit_cost_fcfa_kg(option: Option) -> float:
+    """Return per-physical-kg route, transport and duration-based storage costs."""
+    _, hold_h = option_durations(option)
+    unit_cost = (
+        float(option.cost)
+        + float(option.transport_distance_km) * float(option.transport_cost_fcfa_kg_km)
+        + float(option.storage_cost_fcfa_kg_day) * hold_h / 24.0
+    )
+    if not isfinite(unit_cost):
+        raise EconomicsError(f"option {option.id}: calculated unit cost must be finite")
+    return unit_cost
 
 
 def option_draws(
@@ -324,9 +346,7 @@ def evaluate_portfolio(
         y = qty * value_fraction
         recoverable += y
         detour_h, hold_h = option_durations(option)
-        cost_total += qty * (
-            option.cost + option.storage_cost_fcfa_kg_day * hold_h / 24.0
-        )
+        cost_total += qty * unit_cost_fcfa_kg(option)
         weighted_extra_h += qty * detour_h
         weighted_hold_h += qty * hold_h
         temperature_mean = (

@@ -66,6 +66,8 @@ class Option:
         None  # storage duration; None preserves legacy store semantics
     )
     storage_cost_fcfa_kg_day: float = 0.0  # storage tariff, FCFA per physical kg-day
+    transport_distance_km: float = 0.0
+    transport_cost_fcfa_kg_km: float = 0.0
 
 
 @dataclass(frozen=True)

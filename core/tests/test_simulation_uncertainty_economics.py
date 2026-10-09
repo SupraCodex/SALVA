@@ -142,6 +142,25 @@ def test_storage_tariff_is_charged_per_physical_kg_and_day():
     assert result.net_p50 == pytest.approx(result.gross_value_p50 - 80.0)
 
 
+def test_route_transport_and_storage_costs_are_composed_once():
+    params, lot, option, shocks = base_inputs(absorption=100.0)
+    route = replace(
+        option,
+        action="store",
+        is_store=True,
+        storage_mode="ambient_shade",
+        hold_h=48.0,
+        transport_distance_km=5.0,
+        transport_cost_fcfa_kg_km=1.5,
+        storage_cost_fcfa_kg_day=3.0,
+    )
+
+    result = evaluate(FixedLossModel(), lot, route, shocks, params)
+
+    # Per kg: 2 route + (5 km * 1.5) transport + (2 days * 3) storage.
+    assert result.cost_p50 == pytest.approx(155.0)
+
+
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
@@ -149,6 +168,14 @@ def test_storage_tariff_is_charged_per_physical_kg_and_day():
         ({"storage_cost_fcfa_kg_day": float("inf")}, "finite and >= 0"),
         ({"storage_cost_fcfa_kg_day": True}, "numeric, not bool"),
         ({"cost": True}, "numeric, not bool"),
+        ({"transport_distance_km": True}, "numeric, not bool"),
+        (
+            {
+                "transport_distance_km": 1e308,
+                "transport_cost_fcfa_kg_km": 1e308,
+            },
+            "calculated unit cost must be finite",
+        ),
         ({"storage_cost_fcfa_kg_day": 1.0}, "requires storage"),
         (
             {

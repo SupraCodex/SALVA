@@ -11,9 +11,8 @@ import numpy as np
 from scipy.optimize import linprog
 
 from ..contracts import Option
-from ..features import option_durations
 from ..params import ProductParams
-from .economics import EconomicsError, validate_option
+from .economics import EconomicsError, unit_cost_fcfa_kg, validate_option
 from .models import AllocationLine, AllocationPlan
 
 _TOL = 1e-8
@@ -82,10 +81,7 @@ def optimize(
     n_vars = 2 * n + 1
     objective = np.zeros(n_vars, dtype=float)
     for i, opt in enumerate(opts):
-        _, hold_h = option_durations(opt)
-        unit_cost = (
-            float(opt.cost) + float(opt.storage_cost_fcfa_kg_day) * hold_h / 24.0
-        )
+        unit_cost = unit_cost_fcfa_kg(opt)
         unit_full = float(opt.market.price) * values[i] - unit_cost
         unit_surplus = (
             float(opt.market.price) * float(params.delta) * values[i] - unit_cost

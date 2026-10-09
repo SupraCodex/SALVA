@@ -99,6 +99,25 @@ def test_high_storage_tariff_can_make_storage_route_unprofitable(params):
     assert plan.objective_fcfa == pytest.approx(0.0)
 
 
+def test_distance_based_transport_cost_changes_lp_route_choice(params):
+    near = Option("near", "continue", 10.0, Market(1, "Near", 100.0, 100.0))
+    far = Option(
+        "far",
+        "reroute",
+        10.0,
+        Market(2, "Far", 130.0, 100.0),
+        transport_distance_km=20.0,
+        transport_cost_fcfa_kg_km=2.0,
+    )
+
+    plan = optimize(10.0, [near, far], [1.0, 1.0], params)
+
+    assert {line.option_id: line.kg for line in plan.lines} == pytest.approx(
+        {"near": 10.0}
+    )
+    assert plan.objective_fcfa == pytest.approx(1_000.0)
+
+
 def test_inconsistent_same_market_metadata_is_rejected(params):
     options = [
         opt("a", Market(1, "Market", 100.0, 20.0)),
