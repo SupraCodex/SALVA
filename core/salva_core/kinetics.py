@@ -48,6 +48,15 @@ def degradation_rate(temp_mean_c, temp_max_c, maturity, k_lot, p: ProductParams)
     )
 
 
+def degradation_rate_for_features(f, k_lot, p: ProductParams):
+    """Decay rate using phase-integrated Q10 factors when the builder provides them."""
+    factor = getattr(f, "thermal_rate_factor", None)
+    if factor is None:
+        return degradation_rate(f.temp_mean_c, f.temp_max_c, f.maturity, k_lot, p)
+    m_mat = lookup(p.maturity, f.maturity, "maturity")
+    return p.k_ref * np.asarray(factor, dtype=float) * m_mat * np.asarray(k_lot)
+
+
 def mean_quality(rate, hours):
     """Mean quality Q = exp(-k * hours), in (0, 1]."""
     h = np.asarray(hours, dtype=float)
@@ -96,6 +105,6 @@ def value_loss(q_mean, packaging, p: ProductParams):
 
 def quality_and_loss(f, k_lot, p: ProductParams):
     """Mean quality and loss for ConditionFeatures ``f`` and lot multiplier ``k_lot``."""
-    rate = degradation_rate(f.temp_mean_c, f.temp_max_c, f.maturity, k_lot, p)
+    rate = degradation_rate_for_features(f, k_lot, p)
     q = mean_quality(rate, f.exposure_h)
     return q, value_loss(q, f.packaging, p)

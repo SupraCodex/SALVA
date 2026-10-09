@@ -25,6 +25,7 @@ VALID_RANGE_FEATURES = {
     "degree_hours_above_ref",
     "remaining_transit_h",
     "delay_h",
+    "hold_h",
     "exposure_h",
 }
 EXPECTED_MATURITIES = {"green", "breaker", "ripe"}

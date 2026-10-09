@@ -114,6 +114,7 @@ class ScenarioResult:
     cost_p50: float = 0.0
     extrapolation_warnings: tuple[str, ...] = ()
     lot_reference_value_fcfa: float | None = None
+    hold_h: float = 0.0
 
     @property
     def net_value_p10(self) -> float | None:
@@ -169,6 +170,7 @@ class ScenarioResult:
             "temp_max_c": self.temp_max_c,
             "delay_h": self.delay_h,
             "extra_h": self.extra_h,
+            "hold_h": self.hold_h,
             "cost_p50_fcfa": self.cost_p50,
             "extrapolation_warnings": list(self.extrapolation_warnings),
             "lot_reference_value_fcfa": self.lot_reference_value_fcfa,

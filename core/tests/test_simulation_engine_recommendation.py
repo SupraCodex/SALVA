@@ -19,6 +19,11 @@ class MonotoneLossModel:
         return np.clip(0.05 + 0.25 * np.asarray(u, dtype=float), 0, 1)
 
 
+class FixedShelfLifeModel(MonotoneLossModel):
+    def remaining_shelf_life_p50_h(self, features):
+        return 10.0
+
+
 def inputs():
     p = load_product("tomato")
     lot = Lot(
@@ -105,6 +110,28 @@ def test_real_kinetic_model_runs_two_thousand_draws_end_to_end():
     else:
         assert all(r.prob_best == 0.0 for r in results)
         assert any(r.discouraged for r in results if r.feasible)
+
+
+def test_rm4_counts_storage_hold_separately_from_transit():
+    p = load_product("tomato")
+    lot = Lot(10.0, "breaker", "crate", 0.0, 8.0, 25.0)
+    option = Option(
+        "store",
+        "store",
+        10.0,
+        Market(1, "Local", 100.0, 100.0),
+        is_store=True,
+        storage_mode="ambient_shade",
+        hold_h=3.0,
+    )
+
+    result = run_all(FixedShelfLifeModel(), lot, [option], draw(1_000, 31), p)[0]
+
+    assert result.discouraged
+    assert result.discouraged_reason == "SHELF_LIFE_P50_EXCEEDED"
+    assert result.extra_h == 0.0
+    assert result.hold_h == 3.0
+    assert result.as_dict()["hold_h"] == 3.0
 
 
 def test_high_temp_reason_uses_nominal_mean_and_strict_threshold():

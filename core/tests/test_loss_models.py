@@ -5,7 +5,12 @@ import pytest
 from salva_core import features as F
 from salva_core.contracts import LossModel
 from salva_core.loss_model import KineticLossModel, get_loss_model
-from salva_core.loss_model.factors import FACTOR_NAMES, contributions, explain
+from salva_core.loss_model.factors import (
+    FACTOR_NAMES,
+    contributions,
+    counterfactuals,
+    explain,
+)
 from salva_core.loss_model.sampling import interp_quantiles, sort_and_clip
 from salva_core.params import load_product
 
@@ -86,6 +91,36 @@ def test_explain_returns_quantified_factors(p, model):
 def test_delay_factor_zero_without_delay(p, model):
     contrib = contributions(model, feats(p, delay_h=0.0), p)
     assert float(contrib["delay"]) == pytest.approx(0.0)
+
+
+def test_storage_factor_counterfactual_removes_only_the_storage_phase(p, model):
+    no_storage = feats(p)
+    assert float(contributions(model, no_storage, p)["storage"]) == pytest.approx(0.0)
+
+    stored = feats(
+        p,
+        hold_h=12.0,
+        temp_offset_c=p.storage_offset("cold_room"),
+        storage_mode="cold_room",
+    )
+    counterfactual = counterfactuals(stored, p)["storage"]
+    assert counterfactual.hold_h == 0.0
+    assert counterfactual.storage_mode == "none"
+    assert counterfactual.exposure_h == pytest.approx(stored.exposure_h - stored.hold_h)
+
+
+def test_explanations_handle_stochastic_transit_below_nominal_delay(p, model):
+    f = feats(
+        p,
+        age_h=0.0,
+        remaining_h=12.0,
+        delay_h=10.0,
+        transit_factor=0.5,
+    )
+    assert f.remaining_transit_h == pytest.approx(6.0)
+    explanation = contributions(model, f, p)
+    assert set(explanation) == set(FACTOR_NAMES)
+    assert all(np.isfinite(value).all() for value in explanation.values())
 
 
 def test_cooler_means_less_loss_in_explanations(p, model):

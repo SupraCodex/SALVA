@@ -16,7 +16,15 @@ from ..contracts import ConditionFeatures, LossModel
 from ..features import n_rows, with_changes
 from ..params import ProductParams
 
-FACTOR_NAMES = ("temperature", "age", "transit", "delay", "maturity", "packaging")
+FACTOR_NAMES = (
+    "temperature",
+    "age",
+    "transit",
+    "delay",
+    "maturity",
+    "packaging",
+    "storage",
+)
 
 
 def _benign_packaging(p: ProductParams) -> str:
@@ -33,12 +41,18 @@ def counterfactuals(
     return {
         "temperature": with_changes(f, p, temp_mean_c=p.t_ref_c, diurnal_amp_c=0.0),
         "age": with_changes(f, p, age_h=0.0),
-        "transit": with_changes(f, p, remaining_transit_h=delay_in_transit),
+        "transit": with_changes(
+            f,
+            p,
+            remaining_transit_h=delay_in_transit,
+            delay_h=delay_in_transit,
+        ),
         "delay": with_changes(
             f, p, remaining_transit_h=remaining - delay_in_transit, delay_h=0.0
         ),
         "maturity": with_changes(f, p, maturity=p.maturity_order[0]),
         "packaging": with_changes(f, p, packaging=_benign_packaging(p)),
+        "storage": with_changes(f, p, hold_h=0.0, storage_mode="none"),
     }
 
 

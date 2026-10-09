@@ -8,6 +8,7 @@ from dataclasses import replace
 import numpy as np
 
 from ..contracts import Lot, Option, Shocks
+from ..features import option_durations
 from ..params import ProductParams
 from .allocation import optimize
 from .economics import evaluate_portfolio, option_draws, validate_option
@@ -81,10 +82,11 @@ def run_all(
     for option in opts:
         validate_option(lot, option)
         option_draw = option_draws(model, lot, option, s, params)
+        detour_h, hold_h = option_durations(option)
         draws_by_id[option.id] = option_draw
         shelf_life_exceeded = (
             option_draw.remaining_shelf_life_p50_h is not None
-            and lot.remaining_h + option.extra_h
+            and lot.remaining_h + detour_h + hold_h
             > option_draw.remaining_shelf_life_p50_h + 1e-9
         )
         if not shelf_life_exceeded:
@@ -126,7 +128,8 @@ def run_all(
                     temp_mean_c=draws_by_id[option.id].temp_mean_c,
                     temp_max_c=draws_by_id[option.id].temp_max_c,
                     delay_h=float(lot.delay_h),
-                    extra_h=float(option.extra_h),
+                    extra_h=detour_h,
+                    hold_h=hold_h,
                 )
             )
         else:

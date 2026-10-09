@@ -9,7 +9,7 @@ from math import isfinite
 import numpy as np
 
 from ..contracts import LossDistribution, Lot, Option, Shocks
-from ..features import assemble, build, out_of_range_features
+from ..features import assemble, build, option_durations, out_of_range_features
 from ..params import ProductParams
 from ..risk import classify_risk
 from .models import AllocationPlan, ScenarioResult
@@ -84,6 +84,14 @@ def validate_option(lot: Lot, option: Option) -> None:
         raise EconomicsError(f"option {option.id}.cost must be finite and >= 0 FCFA/kg")
     if not isfinite(float(option.extra_h)) or option.extra_h < 0:
         raise EconomicsError(f"option {option.id}.extra_h must be finite and >= 0")
+    if option.hold_h is not None:
+        if isinstance(option.hold_h, (bool, np.bool_)):
+            raise EconomicsError(
+                f"option {option.id}.hold_h must be a duration, not bool"
+            )
+        hold_h = _finite_nonnegative(option.hold_h, f"option {option.id}.hold_h")
+        if hold_h > 0 and not option.is_store:
+            raise EconomicsError(f"option {option.id}.hold_h > 0 requires storage")
     if not isfinite(float(option.temp_offset)):
         raise EconomicsError(f"option {option.id}.temp_offset must be finite")
     if option.action == "store" and not option.is_store:
@@ -122,6 +130,7 @@ def option_draws(
     s = validate_shocks(shocks, n)
     validate_option(lot, option)
     f = build(lot, option, s, params)
+    detour_h, hold_h = option_durations(option)
     baseline = assemble(
         params,
         maturity=lot.maturity,
@@ -131,7 +140,8 @@ def option_draws(
         temp_air_c=lot.temp_c,
         delay_h=lot.delay_h,
         diurnal_amp_c=lot.diurnal_amp_c,
-        extra_h=option.extra_h,
+        extra_h=detour_h,
+        hold_h=hold_h,
         temp_offset_c=option.temp_offset,
         storage_mode=option.storage_mode,
         product=lot.product,
@@ -235,6 +245,7 @@ def evaluate_portfolio(
     temperature_mean: float | None = None
     temperature_max: float | None = None
     weighted_extra_h = 0.0
+    weighted_hold_h = 0.0
     stored_kg = 0.0
     site_capacities: dict[str, float] = {}
     site_usage: dict[str, float] = {}
@@ -257,7 +268,9 @@ def evaluate_portfolio(
         y = qty * od.value_fraction
         recoverable += y
         cost_total += qty * option.cost
-        weighted_extra_h += qty * option.extra_h
+        detour_h, hold_h = option_durations(option)
+        weighted_extra_h += qty * detour_h
+        weighted_hold_h += qty * hold_h
         temperature_mean = (
             od.temp_mean_c
             if temperature_mean is None
@@ -355,6 +368,7 @@ def evaluate_portfolio(
         temp_max_c=temperature_max,
         delay_h=float(lot.delay_h),
         extra_h=weighted_extra_h / total_allocated if total_allocated > _TOL else 0.0,
+        hold_h=weighted_hold_h / total_allocated if total_allocated > _TOL else 0.0,
         cost_p50=float(cost_total),
         extrapolation_warnings=tuple(sorted(extrapolation_warnings)),
     )
@@ -399,13 +413,13 @@ def evaluate(
             infeasible_reason=reason,
             discouraged=(
                 od.remaining_shelf_life_p50_h is not None
-                and lot.remaining_h + option.extra_h
+                and lot.remaining_h + sum(option_durations(option))
                 > od.remaining_shelf_life_p50_h + 1e-9
             ),
             discouraged_reason=(
                 "SHELF_LIFE_P50_EXCEEDED"
                 if od.remaining_shelf_life_p50_h is not None
-                and lot.remaining_h + option.extra_h
+                and lot.remaining_h + sum(option_durations(option))
                 > od.remaining_shelf_life_p50_h + 1e-9
                 else None
             ),
@@ -413,7 +427,8 @@ def evaluate(
             temp_mean_c=od.temp_mean_c,
             temp_max_c=od.temp_max_c,
             delay_h=float(lot.delay_h),
-            extra_h=float(option.extra_h),
+            extra_h=option_durations(option)[0],
+            hold_h=option_durations(option)[1],
         )
     return evaluate_portfolio(
         lot,

@@ -49,6 +49,9 @@ relative score gap is measured against that nominal lot reference, as required b
 | `kg` | Maximum physical throughput of this route | For storage, effective throughput is the minimum of route and site capacity. |
 | `storage_site_id` | Optional id grouping routes through the same site | Omitted ids are treated as distinct sites. |
 | `storage_capacity_kg` | Free physical capacity available to this simulation, after occupied/reserved stock | If the same site occurs on multiple Options, provide the same available value for all; core has no inventory ledger and cannot derive free capacity from nominal site capacity. |
+| `extra_h` | Additional transit/detour hours | For a legacy storage Option with `hold_h=None`, this is still interpreted as the storage hold. |
+| `hold_h` | Explicit storage hold duration in hours | New storage Options should set this field; it is excluded from stochastic transit multipliers. |
+| `temp_offset` | Storage temperature adjustment in °C | Set from `ProductParams.storage_offset(storage_mode)`; it affects only the storage phase. |
 
 These fields were appended with defaults, so existing positional Option constructors remain
 valid. They are nevertheless a contract change and are not considered accepted by P3 until
@@ -65,6 +68,34 @@ no measured capacity. No numeric default or market reference file is present in 
 branch, so core deliberately does not invent one: P2/backend or the project reference-data
 owner must resolve the per-market default and include the assumption in the user-visible
 inputs before calling `run_all`. Passing `None` is invalid.
+
+## Storage exposure and feature schema v2
+
+The feature schema is now version `2.0.0` because it includes `hold_h`. Historical age,
+future transit and a controlled storage hold are separate phases: weather-temperature and
+transit-duration shocks apply only to future transit; a storage `temp_offset` applies only to
+`hold_h`; the storage hold is not multiplied by the transit-duration shock. For backward
+compatibility, an old `is_store=True` Option that leaves `hold_h=None` continues to interpret
+`extra_h` as the hold. New callers should use `extra_h` for detour and `hold_h` for storage.
+
+The kinetic reference integrates the Q10 decay factor over those phases (and over the daily
+temperature cycle for historical/transit exposure) rather than applying a storage offset to
+the lot's entire age and route. Reported mean temperature and degree-hours are phase weighted;
+`temp_max_c` is the maximum over phases with non-zero duration. Storage hold temperature is
+treated as controlled/stable, with no weather-driven diurnal amplitude. This is an explicit
+model assumption pending site-level temperature time series. Since `hold_h` changes the ML
+schema hash, artifacts trained against feature schema 1.x are rejected at load time and must
+be regenerated/evaluated before deployment.
+
+`Lot` does not currently carry observed historical temperature series. Until that upstream
+contract is available, the historical-age phase uses the supplied nominal air/packaging
+temperature as a proxy, without applying the future weather shock. This is a modeling
+assumption, not a claim that past conditions were measured.
+
+`storage_mode` is normalized to `none` when `hold_h` is zero, so a category alone cannot
+alter the model prediction without a storage exposure. The deterministic explanation factor
+`storage` compares against a no-hold/no-storage counterfactual; as with other factors, it is
+an attribution of model behavior, not proof of biological causality.
 
 ## Economic invariants
 

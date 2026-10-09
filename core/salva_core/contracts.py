@@ -49,8 +49,8 @@ class Option:
     action: str  # continue | store | reroute | sell_local
     kg: float  # maximum physical kg this route can handle
     market: Market
-    extra_h: float = 0.0  # extra hours (detour or storage hold)
-    temp_offset: float = 0.0  # degC; for storage use ProductParams.storage_offset(mode)
+    extra_h: float = 0.0  # extra transit/detour hours; legacy store values mean hold_h
+    temp_offset: float = 0.0  # degC; applied only during storage hold
     cost: float = 0.0  # variable cost, FCFA per physical kg
     is_store: bool = False
     storage_mode: str = "none"
@@ -59,6 +59,9 @@ class Option:
     )
     storage_capacity_kg: float | None = (
         None  # free physical capacity available to this run
+    )
+    hold_h: float | None = (
+        None  # storage duration; None preserves legacy store semantics
     )
 
 
@@ -77,8 +80,10 @@ class Shocks:
 class ConditionFeatures:
     """Derived conditions seen by a loss model. Produced ONLY by features.assemble/build.
 
-    temp_mean_c is the EFFECTIVE mean PRODUCT temperature: air + packaging delta +
-    storage offset + shock.  exposure_h = age_h + remaining_transit_h.
+    Temperature features summarize the air/packaging conditions over historical exposure,
+    transit, and storage. The storage offset applies only during ``hold_h``. The optional
+    phase fields retain the exact Q10 exposure used by the kinetic model and are not model
+    matrix columns.
     """
 
     product: str
@@ -92,6 +97,14 @@ class ConditionFeatures:
     remaining_transit_h: Num
     delay_h: Num
     exposure_h: Num
+    hold_h: Num = 0.0
+    thermal_rate_factor: Num | None = field(default=None, repr=False, compare=False)
+    historical_rate_factor: Num | None = field(default=None, repr=False, compare=False)
+    future_rate_factor: Num | None = field(default=None, repr=False, compare=False)
+    history_temp_mean_c: Num | None = field(default=None, repr=False, compare=False)
+    transit_temp_mean_c: Num | None = field(default=None, repr=False, compare=False)
+    storage_temp_mean_c: Num | None = field(default=None, repr=False, compare=False)
+    diurnal_amp_c: Num | None = field(default=None, repr=False, compare=False)
 
 
 @dataclass(frozen=True)

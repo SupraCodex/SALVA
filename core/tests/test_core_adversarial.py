@@ -54,7 +54,7 @@ def test_effective_temperature_shock_can_cross_range_without_aborting(p):
         p,
         maturity="breaker",
         packaging="crate",
-        age_h=2.0,
+        age_h=0.0,
         remaining_h=2.0,
         temp_air_c=49.5,
         temp_shock_c=np.array([-3.0, 0.0, 3.0]),

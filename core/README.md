@@ -48,8 +48,10 @@ convenience API that creates the shocks and calls the same adapter.
    `best_id=None` rather than inventing a winner. By default, the materiality gap is measured
    against the nominal lot reference attached to the results (`lot.kg * highest candidate
    market price`); `Policy.reference_value_fcfa` can override it. Reason codes are
-   deterministic; prose is left to the application layer. `HIGH_TEMP` uses the nominal effective mean product
-   temperature (air + packaging + storage offset), strictly above 30 °C, not one random draw.
+   deterministic; prose is left to the application layer. `HIGH_TEMP` uses the nominal
+   exposure-weighted mean product temperature, strictly above 30 °C, not one random draw.
+   Storage offsets apply only during `hold_h`; weather shocks affect future transit, not
+   historical age.
 6. **Risk and shelf life:** feasible results expose a product-configured risk level derived
    from loss P50 and P10-P90 width. The kinetic model and LightGBM adapter implement the
    optional `remaining_shelf_life_p50_h` contract; a LightGBM estimate is withheld if its

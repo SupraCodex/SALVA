@@ -8,7 +8,7 @@ from scipy.special import ndtri
 from .. import kinetics
 from ..contracts import ConditionFeatures, LossDistribution
 from ..features import n_rows, out_of_range_features, out_of_range_mask
-from ..params import ProductParams
+from ..params import ProductParams, lookup
 
 _U_EPS = 1e-9
 
@@ -30,7 +30,7 @@ class KineticLossModel:
     def __init__(self, params: ProductParams, version: str | None = None) -> None:
         """Create a kinetic model bound to one validated product parameter set."""
         self.params = params
-        self.version = version or f"kinetic-1.0.0+{params.file_sha256[:8]}"
+        self.version = version or f"kinetic-2.0.0+{params.file_sha256[:8]}"
 
     def lot_multiplier(self, u):
         """Map uniform draws to the lognormal lot-level decay multiplier."""
@@ -101,15 +101,16 @@ class KineticLossModel:
             for name in ("temp_mean_c", "temp_max_c", "age_h")
         ):
             raise ValueError("remaining_shelf_life_p50_h requires one feature row")
+        k_lot = self.lot_multiplier(0.5)
+        maturity_factor = lookup(self.params.maturity, f.maturity, "maturity")
+        historical_factor = f.historical_rate_factor
+        if historical_factor is None:
+            historical_factor = kinetics.thermal_factor(
+                f.temp_mean_c, f.temp_max_c, self.params
+            )
         q_now = float(
             kinetics.mean_quality(
-                kinetics.degradation_rate(
-                    f.temp_mean_c,
-                    f.temp_max_c,
-                    f.maturity,
-                    self.lot_multiplier(0.5),
-                    self.params,
-                ),
+                self.params.k_ref * historical_factor * maturity_factor * k_lot,
                 f.age_h,
             )
         )
@@ -125,15 +126,12 @@ class KineticLossModel:
             else:
                 hi = mid
         target_quality = hi
-        rate = float(
-            kinetics.degradation_rate(
-                f.temp_mean_c,
-                f.temp_max_c,
-                f.maturity,
-                self.lot_multiplier(0.5),
-                self.params,
+        future_factor = f.future_rate_factor
+        if future_factor is None:
+            future_factor = kinetics.thermal_factor(
+                f.temp_mean_c, f.temp_max_c, self.params
             )
-        )
+        rate = float(self.params.k_ref * future_factor * maturity_factor * k_lot)
         if current_loss >= self.params.shelf_life_loss_threshold:
             return np.asarray(0.0)
         return np.asarray(max(0.0, np.log(q_now / target_quality) / max(rate, 1e-12)))

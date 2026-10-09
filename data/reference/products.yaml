@@ -124,6 +124,7 @@ tomato:
     temp_mean_c: {min: 0.0, max: 50.0, unit: degC}
     age_h: {min: 0.0, max: 720.0, unit: h}
     remaining_transit_h: {min: 0.0, max: 720.0, unit: h}
+    hold_h: {min: 0.0, max: 72.0, unit: h}
   # Initial synthetic-training support derived from SALVA_Document_de_Conception.docx §28
   # (18–38 C air, packaging/storage offsets, age 0–168 h, transit 0–72 h, storage hold 0–72 h).
   # These are planning assumptions, NOT learned or field-calibrated ranges. A packaged model
@@ -135,4 +136,5 @@ tomato:
     age_h: {min: 0.0, max: 168.0, unit: h}
     remaining_transit_h: {min: 0.0, max: 144.0, unit: h}
     delay_h: {min: 0.0, max: 48.0, unit: h}
+    hold_h: {min: 0.0, max: 72.0, unit: h}
     exposure_h: {min: 0.0, max: 312.0, unit: h}

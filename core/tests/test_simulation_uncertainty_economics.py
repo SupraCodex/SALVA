@@ -131,6 +131,21 @@ def test_unknown_action_is_rejected_before_model_execution():
         evaluate(FixedLossModel(), lot, replace(option, action="guess"), shocks, params)
 
 
+def test_hold_duration_is_storage_only_and_rejects_boolean_values():
+    params, lot, option, shocks = base_inputs()
+    with pytest.raises(EconomicsError, match="requires storage"):
+        evaluate(FixedLossModel(), lot, replace(option, hold_h=2.0), shocks, params)
+    store = replace(
+        option,
+        action="store",
+        is_store=True,
+        storage_mode="ambient_shade",
+        hold_h=True,  # type: ignore[arg-type]
+    )
+    with pytest.raises(EconomicsError, match="not bool"):
+        evaluate(FixedLossModel(), lot, store, shocks, params)
+
+
 def test_direct_portfolio_evaluation_enforces_shared_storage_capacity():
     params, lot, option, shocks = base_inputs(lot_kg=6.0, cap=6.0)
     options = [
