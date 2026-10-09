@@ -36,6 +36,8 @@ class OptionDraws:
 
 
 def _finite_nonnegative(value: float, field: str) -> float:
+    if isinstance(value, (bool, np.bool_)):
+        raise EconomicsError(f"{field} must be numeric, not bool")
     number = float(value)
     if not isfinite(number) or number < 0:
         raise EconomicsError(f"{field} must be finite and >= 0")
@@ -53,7 +55,7 @@ def validate_option(lot: Lot, option: Option) -> None:
             f"option {option.id}: unsupported action {option.action!r}; "
             f"allowed: {sorted(_ACTIONS)}"
         )
-    if not isfinite(float(lot.kg)) or lot.kg <= 0:
+    if _finite_nonnegative(lot.kg, "lot.kg") <= 0:
         raise EconomicsError("lot.kg must be finite and > 0")
     capacity = _finite_nonnegative(option.kg, f"option {option.id}.kg")
     if capacity <= 0:
@@ -80,10 +82,8 @@ def validate_option(lot: Lot, option: Option) -> None:
             f"option {option.id}: market.absorb_kg must be finite and >= 0; "
             "resolve missing market defaults in the caller"
         )
-    if not isfinite(float(option.cost)) or option.cost < 0:
-        raise EconomicsError(f"option {option.id}.cost must be finite and >= 0 FCFA/kg")
-    if not isfinite(float(option.extra_h)) or option.extra_h < 0:
-        raise EconomicsError(f"option {option.id}.extra_h must be finite and >= 0")
+    _finite_nonnegative(option.cost, f"option {option.id}.cost")
+    _finite_nonnegative(option.extra_h, f"option {option.id}.extra_h")
     if option.hold_h is not None:
         if isinstance(option.hold_h, (bool, np.bool_)):
             raise EconomicsError(
@@ -105,7 +105,10 @@ def validate_option(lot: Lot, option: Option) -> None:
             raise EconomicsError(
                 f"option {option.id}.storage_cost_fcfa_kg_day requires hold_h > 0"
             )
-    if option.temp_offset is not None and not isfinite(float(option.temp_offset)):
+    if option.temp_offset is not None and (
+        isinstance(option.temp_offset, (bool, np.bool_))
+        or not isfinite(float(option.temp_offset))
+    ):
         raise EconomicsError(f"option {option.id}.temp_offset must be finite")
     if option.action == "store" and not option.is_store:
         raise EconomicsError(

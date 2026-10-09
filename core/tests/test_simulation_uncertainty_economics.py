@@ -147,7 +147,18 @@ def test_storage_tariff_is_charged_per_physical_kg_and_day():
     [
         ({"storage_cost_fcfa_kg_day": -1.0}, "finite and >= 0"),
         ({"storage_cost_fcfa_kg_day": float("inf")}, "finite and >= 0"),
+        ({"storage_cost_fcfa_kg_day": True}, "numeric, not bool"),
+        ({"cost": True}, "numeric, not bool"),
         ({"storage_cost_fcfa_kg_day": 1.0}, "requires storage"),
+        (
+            {
+                "action": "store",
+                "is_store": True,
+                "storage_mode": "ambient_shade",
+                "storage_cost_fcfa_kg_day": 1.0,
+            },
+            "requires hold_h > 0",
+        ),
     ],
 )
 def test_storage_tariff_rejects_invalid_or_nonstorage_use(changes, message):
