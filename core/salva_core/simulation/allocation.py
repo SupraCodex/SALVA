@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from math import isfinite
 from numbers import Real
-from typing import Sequence
 
 import numpy as np
 from scipy.optimize import linprog
@@ -31,7 +31,7 @@ def optimize(
 ) -> AllocationPlan:
     """Maximize expected net value at P50 while respecting physical and market limits.
 
-    ``value_fractions[i]`` is the median fraction of value retained on option ``i``.
+    ``value_fractions[i]`` is the Monte Carlo mean fraction of value retained on option ``i``.
     For each option the LP chooses physical kg sold in the full-price tier and in the
     discounted-surplus tier. Full-price-equivalent kg across all routes to the same market
     share one absorption constraint. Storage options sharing ``storage_site_id`` share one
@@ -50,7 +50,9 @@ def optimize(
     if len(set(ids)) != len(ids):
         raise AllocationError("option ids must be unique")
     if "optimized_split" in ids:
-        raise AllocationError("option id 'optimized_split' is reserved by the simulation engine")
+        raise AllocationError(
+            "option id 'optimized_split' is reserved by the simulation engine"
+        )
     for opt in opts:
         try:
             validate_option(_lot_stub(float(lot_kg)), opt)
@@ -59,14 +61,20 @@ def optimize(
 
     values = np.asarray(value_fractions, dtype=float)
     if values.shape != (len(opts),) or not np.all(np.isfinite(values)):
-        raise AllocationError(f"value_fractions must be a finite vector of length {len(opts)}")
+        raise AllocationError(
+            f"value_fractions must be a finite vector of length {len(opts)}"
+        )
     if np.any((values < 0.0) | (values > 1.0)):
         raise AllocationError("value_fractions must be in [0, 1]")
     if not isfinite(float(params.delta)) or not 0.0 <= params.delta <= 1.0:
         raise AllocationError("product delta must be in [0, 1]")
-    if store_cap is not None:
-        if isinstance(store_cap, bool) or not isinstance(store_cap, Real) or not isfinite(float(store_cap)) or store_cap < 0:
-            raise AllocationError("store_cap must be finite and >= 0 when provided")
+    if store_cap is not None and (
+        isinstance(store_cap, bool)
+        or not isinstance(store_cap, Real)
+        or not isfinite(float(store_cap))
+        or store_cap < 0
+    ):
+        raise AllocationError("store_cap must be finite and >= 0 when provided")
 
     n = len(opts)
     # Variables: n full-price physical quantities, n surplus quantities, one discard.
@@ -74,7 +82,9 @@ def optimize(
     objective = np.zeros(n_vars, dtype=float)
     for i, opt in enumerate(opts):
         unit_full = float(opt.market.price) * values[i] - float(opt.cost)
-        unit_surplus = float(opt.market.price) * float(params.delta) * values[i] - float(opt.cost)
+        unit_surplus = float(opt.market.price) * float(params.delta) * values[
+            i
+        ] - float(opt.cost)
         objective[i] = -unit_full
         objective[n + i] = -unit_surplus
     objective[2 * n] = 0.0
@@ -96,7 +106,9 @@ def optimize(
         market_id = int(opt.market.id)
         meta = (float(opt.market.price), float(opt.market.absorb_kg))
         if market_id in market_meta and market_meta[market_id] != meta:
-            raise AllocationError(f"market {market_id} has inconsistent price or absorption across options")
+            raise AllocationError(
+                f"market {market_id} has inconsistent price or absorption across options"
+            )
         market_meta[market_id] = meta
         market_groups[market_id].append(i)
     for market_id, indices in market_groups.items():
@@ -113,7 +125,9 @@ def optimize(
         if not opt.is_store:
             continue
         site_id = str(opt.storage_site_id or opt.id)
-        capacity = float(opt.storage_capacity_kg if opt.storage_capacity_kg is not None else opt.kg)
+        capacity = float(
+            opt.storage_capacity_kg if opt.storage_capacity_kg is not None else opt.kg
+        )
         previous = site_capacities.get(site_id)
         if previous is not None and not np.isclose(previous, capacity):
             raise AllocationError(
@@ -172,5 +186,11 @@ def _lot_stub(kg: float):
     """Create only the Lot fields validated by ``validate_option`` without hiding inputs."""
     from ..contracts import Lot
 
-    return Lot(kg=kg, maturity="breaker", packaging="crate", age_h=0.0,
-               remaining_h=0.0, temp_c=20.0)
+    return Lot(
+        kg=kg,
+        maturity="breaker",
+        packaging="crate",
+        age_h=0.0,
+        remaining_h=0.0,
+        temp_c=20.0,
+    )

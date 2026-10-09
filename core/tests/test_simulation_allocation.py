@@ -1,9 +1,7 @@
 """Allocation LP: market aggregation, storage, feasibility and mass conservation."""
 
-import numpy as np
 import pytest
-
-from salva_core.contracts import Lot, Market, Option
+from salva_core.contracts import Market, Option
 from salva_core.params import load_product
 from salva_core.simulation.allocation import AllocationError, optimize
 
@@ -45,10 +43,26 @@ def test_full_price_capacity_is_shared_across_routes_to_same_market(params):
 def test_options_at_same_storage_site_share_capacity(params):
     market = Market(1, "Market", 100.0, 100.0)
     options = [
-        Option("store-a", "store", 10.0, market, is_store=True, storage_mode="ambient_shade",
-               storage_site_id="site-1", storage_capacity_kg=3.0),
-        Option("store-b", "store", 10.0, market, is_store=True, storage_mode="ambient_shade",
-               storage_site_id="site-1", storage_capacity_kg=3.0),
+        Option(
+            "store-a",
+            "store",
+            10.0,
+            market,
+            is_store=True,
+            storage_mode="ambient_shade",
+            storage_site_id="site-1",
+            storage_capacity_kg=3.0,
+        ),
+        Option(
+            "store-b",
+            "store",
+            10.0,
+            market,
+            is_store=True,
+            storage_mode="ambient_shade",
+            storage_site_id="site-1",
+            storage_capacity_kg=3.0,
+        ),
         opt("continue", market, kg=10.0),
     ]
     plan = optimize(10.0, options, [1.0, 1.0, 0.8], params)
@@ -67,8 +81,10 @@ def test_unprofitable_surplus_is_explicitly_discarded(params):
 
 
 def test_inconsistent_same_market_metadata_is_rejected(params):
-    options = [opt("a", Market(1, "Market", 100.0, 20.0)),
-               opt("b", Market(1, "Market", 105.0, 20.0))]
+    options = [
+        opt("a", Market(1, "Market", 100.0, 20.0)),
+        opt("b", Market(1, "Market", 105.0, 20.0)),
+    ]
     with pytest.raises(AllocationError, match="inconsistent"):
         optimize(10.0, options, [0.8, 0.9], params)
 

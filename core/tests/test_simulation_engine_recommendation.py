@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-
 from salva_core.contracts import Lot, Market, Option
+from salva_core.loss_model import KineticLossModel
 from salva_core.params import load_product
 from salva_core.recommendation import Policy, recommend
 from salva_core.simulation.engine import SimulationEngine, run_all
@@ -21,8 +21,15 @@ class MonotoneLossModel:
 
 def inputs():
     p = load_product("tomato")
-    lot = Lot(kg=10.0, maturity="breaker", packaging="crate", age_h=24,
-              remaining_h=8, temp_c=33.0, delay_h=6.0)
+    lot = Lot(
+        kg=10.0,
+        maturity="breaker",
+        packaging="crate",
+        age_h=24,
+        remaining_h=8,
+        temp_c=33.0,
+        delay_h=6.0,
+    )
     market_a = Market(1, "Local", 100.0, 5.0)
     market_b = Market(2, "Regional", 180.0, 20.0)
     options = [
@@ -34,7 +41,7 @@ def inputs():
 
 def test_p3_adapter_signatures_and_results_are_reproducible():
     p, lot, options = inputs()
-    shocks = draw(500, 17)
+    shocks = draw(1_000, 17)
     options[1] = replace(options[1], kg=6.0)
     first = run_all(MonotoneLossModel(), lot, options, shocks, p)
     second = run_all(MonotoneLossModel(), lot, options, shocks, p)
@@ -52,9 +59,48 @@ def test_p3_adapter_signatures_and_results_are_reproducible():
 def test_engine_facade_uses_same_seed_and_defaults():
     p, lot, options = inputs()
     facade = SimulationEngine(MonotoneLossModel(), p)
-    a = facade.run(lot, options, n_draws=100, seed=11)
-    b = facade.run(lot, options, n_draws=100, seed=11)
+    a = facade.run(lot, options, n_draws=1_000, seed=11)
+    b = facade.run(lot, options, n_draws=1_000, seed=11)
     assert [r.as_dict() for r in a] == [r.as_dict() for r in b]
+
+
+def test_run_all_rejects_fewer_than_one_thousand_draws():
+    p, lot, options = inputs()
+    full = draw(1_000, 11)
+    short = replace(
+        full,
+        temp=full.temp[:999],
+        transit=full.transit[:999],
+        price=full.price[:999],
+        absorb=full.absorb[:999],
+        u=full.u[:999],
+    )
+    with pytest.raises(ValueError, match="at least 1000"):
+        run_all(MonotoneLossModel(), lot, options, short, p)
+
+
+def test_real_kinetic_model_runs_two_thousand_draws_end_to_end():
+    p, lot, options = inputs()
+    results = SimulationEngine(KineticLossModel(p), p).run(
+        lot, options, n_draws=2_000, seed=42
+    )
+    assert results
+    for result in results:
+        if result.feasible:
+            assert result.loss_p10 <= result.loss_p50 <= result.loss_p90
+            assert result.net_p10 <= result.net_p50 <= result.net_p90
+    assert sum(r.prob_best for r in results if r.feasible) == pytest.approx(1.0)
+
+
+def test_high_temp_reason_uses_nominal_mean_and_strict_threshold():
+    p = load_product("tomato")
+    # Air at 30 C plus crate offset 0 C; diurnal maximum does not redefine T in HIGH_TEMP.
+    lot = Lot(10.0, "breaker", "crate", 24.0, 4.0, 30.0)
+    option = Option("continue", "continue", 10.0, Market(1, "Market", 100.0, 20.0))
+    result = run_all(MonotoneLossModel(), lot, [option], draw(1_000, 44), p)[0]
+    recommendation = recommend([result])
+    assert result.temp_mean_c == pytest.approx(30.0)
+    assert "HIGH_TEMP" not in recommendation.rationale_codes
 
 
 def test_materially_tied_routes_return_no_clear_winner():
@@ -66,7 +112,9 @@ def test_materially_tied_routes_return_no_clear_winner():
         Option("b", "continue", 10.0, market),
         Option("c", "continue", 10.0, market),
     ]
-    results = run_all(MonotoneLossModel(), lot, options, draw(100, 3), p, include_allocation=False)
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1_000, 3), p, include_allocation=False
+    )
     rec = recommend(results)
     assert rec.best_id is None
     assert rec.no_clear_winner
@@ -77,7 +125,9 @@ def test_materially_tied_routes_return_no_clear_winner():
 
 def test_best_action_is_risk_adjusted_and_rationales_are_structured():
     p, lot, options = inputs()
-    results = run_all(MonotoneLossModel(), lot, options, draw(1000, 21), p, include_allocation=False)
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1000, 21), p, include_allocation=False
+    )
     rec = recommend(results, Policy(reference_value_fcfa=1800))
     assert rec.best_id == "reroute"
     assert rec.confidence in {"high", "medium", "low"}
@@ -88,7 +138,9 @@ def test_best_action_is_risk_adjusted_and_rationales_are_structured():
 
 def test_discouraged_options_are_not_recommended():
     p, lot, options = inputs()
-    results = run_all(MonotoneLossModel(), lot, options, draw(100, 6), p, include_allocation=False)
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1_000, 6), p, include_allocation=False
+    )
     discouraged = [replace(r, discouraged=True) for r in results]
     rec = recommend(discouraged)
     assert rec.best_id is None
@@ -97,7 +149,7 @@ def test_discouraged_options_are_not_recommended():
 
 def test_one_candidate_is_named_without_inventing_a_tie():
     p, lot, options = inputs()
-    results = run_all(MonotoneLossModel(), lot, options[:1], draw(100, 2), p)
+    results = run_all(MonotoneLossModel(), lot, options[:1], draw(1_000, 2), p)
     rec = recommend(results)
     assert rec.best_id == "local"
     assert rec.confidence == "high"

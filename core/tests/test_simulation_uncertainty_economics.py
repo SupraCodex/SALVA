@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-
 from salva_core.contracts import Lot, Market, Option, Shocks
 from salva_core.params import load_product
 from salva_core.simulation.economics import EconomicsError, evaluate
@@ -23,13 +22,27 @@ class FixedLossModel:
 
 def base_inputs(*, lot_kg=10.0, cap=10.0, absorption=4.0, cost=2.0):
     params = load_product("tomato")
-    lot = Lot(kg=lot_kg, maturity="breaker", packaging="crate", age_h=2.0,
-              remaining_h=3.0, temp_c=25.0)
-    option = Option(id="local", action="continue", kg=cap,
-                    market=Market(1, "Market A", 100.0, absorption), cost=cost)
+    lot = Lot(
+        kg=lot_kg,
+        maturity="breaker",
+        packaging="crate",
+        age_h=2.0,
+        remaining_h=3.0,
+        temp_c=25.0,
+    )
+    option = Option(
+        id="local",
+        action="continue",
+        kg=cap,
+        market=Market(1, "Market A", 100.0, absorption),
+        cost=cost,
+    )
     shocks = Shocks(
-        temp=np.zeros(100), transit=np.ones(100), price=np.ones(100),
-        absorb=np.ones(100), u=np.linspace(0.01, 0.99, 100),
+        temp=np.zeros(100),
+        transit=np.ones(100),
+        price=np.ones(100),
+        absorb=np.ones(100),
+        u=np.linspace(0.01, 0.99, 100),
     )
     return params, lot, option, shocks
 
@@ -45,7 +58,7 @@ def test_draw_is_seeded_bounded_and_uses_common_length():
     assert np.std(a.temp) == pytest.approx(1.5, rel=0.07)
 
 
-@pytest.mark.parametrize("n", [0, 99, 20_001, 3.5, True])
+@pytest.mark.parametrize("n", [0, 999, 20_001, 3.5, True])
 def test_draw_rejects_invalid_draw_count(n):
     with pytest.raises(ShockValidationError):
         draw(n, 42)
@@ -58,7 +71,7 @@ def test_draw_rejects_invalid_seed(seed):
 
 
 def test_shock_validation_rejects_mismatched_or_nonfinite_vectors():
-    shocks = draw(100, 42)
+    shocks = draw(1_000, 42)
     with pytest.raises(ShockValidationError):
         validate(replace(shocks, price=np.ones(99)))
     with pytest.raises(ShockValidationError):
@@ -91,6 +104,14 @@ def test_candidate_below_physical_capacity_is_infeasible_not_silently_partial():
     assert not result.feasible
     assert result.infeasible_reason == "OPTION_CAPACITY_BELOW_LOT"
     assert result.net_p50 is None
+
+
+def test_route_capacity_may_exceed_lot_without_creating_extra_quantity():
+    params, lot, option, shocks = base_inputs(cap=20.0)
+    result = evaluate(FixedLossModel(), lot, option, shocks, params)
+    assert result.feasible
+    assert result.recoverable_kg_p50 == pytest.approx(8.0)
+    assert result.cost_p50 == pytest.approx(20.0)
 
 
 def test_loss_model_contract_violation_is_rejected():

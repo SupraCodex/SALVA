@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from ..simulation.models import ScenarioResult
 from .policy import Policy
@@ -20,7 +20,7 @@ def rationale_codes(
         return ("NO_FEASIBLE_ACTION",)
 
     codes: list[str] = []
-    if best.temp_max_c is not None and best.temp_max_c > policy.high_temp_c:
+    if best.temp_mean_c is not None and best.temp_mean_c > policy.high_temp_c:
         codes.append("HIGH_TEMP")
     if best.delay_h >= policy.delay_hours:
         codes.append("DELAY")
@@ -28,7 +28,8 @@ def rationale_codes(
         codes.append("MARKET_SATURATION_AT_DEST")
     if (
         best.storage_capacity_kg > 0
-        and best.storage_used_kg >= best.storage_capacity_kg * (1.0 - policy.storage_binding_tolerance)
+        and best.storage_used_kg
+        >= best.storage_capacity_kg * (1.0 - policy.storage_binding_tolerance)
     ):
         codes.append("STORAGE_CAPACITY_BINDING")
     if (

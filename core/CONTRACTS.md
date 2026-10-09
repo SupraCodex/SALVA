@@ -23,7 +23,7 @@ participate in a partial allocation. The backend should render infeasibility and
 | Field | Core meaning | Integration note |
 | --- | --- | --- |
 | `cost` | Variable cost, FCFA per physical kg | Previously unit-unspecified; confirm with backend before supplying values. |
-| `kg` | Maximum physical throughput of this route | For a store route, also cannot exceed the physical site capacity. |
+| `kg` | Maximum physical throughput of this route | For storage, effective throughput is the minimum of route and site capacity. |
 | `storage_site_id` | Optional id grouping routes through the same site | Omitted ids are treated as distinct sites. |
 | `storage_capacity_kg` | Total capacity of the identified site | If the same site occurs on multiple Options, provide the same value for all. |
 
@@ -39,8 +39,9 @@ reviewed.
 - For a given market and draw, the full-price tier is bounded by the market's absorption;
   any excess is valued using product `delta`. Routes to one market share this cap.
 - Allocation conserves physical mass: `sum(route kg) + discarded_kg == Lot.kg`.
-- Allocation is optimized at the median loss/value fraction; Monte Carlo results then evaluate
-  that fixed decision across the common shocks. It is not a per-draw clairvoyant optimizer.
+- Allocation uses the Monte Carlo mean retained-value fraction as the LP coefficient; Monte
+  Carlo results then evaluate that fixed decision across the common shocks. It is not a
+  per-draw clairvoyant optimizer.
 - Recommendation is risk-adjusted after simulation, and never changes the underlying
   financial outputs.
 

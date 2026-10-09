@@ -28,22 +28,26 @@ convenience API that creates the shocks and calls the same adapter.
 
 ## What is calculated
 
-1. **Common random numbers:** one seeded shock bundle is reused for every route. A run is
-   deterministic for a given model, lot, options, parameter file, draw count, and seed.
+1. **Common random numbers:** one seeded shock bundle is reused for every route. Production
+   runs use at least 1,000 draws (2,000 by default); a run is deterministic for a given
+   model, lot, options, parameter file, draw count, and seed.
 2. **Loss and recoverable quantity:** the selected `LossModel.sample_loss(features, u)` is
    the only source of loss draws. Recoverable kg are full-price-equivalent kg, not a claim
    that all those kg can be sold at full price.
 3. **Market economics:** quantities routed to the same market are aggregated before the
    full-price absorption cap is applied. Excess recoverable quantity receives the product's
    `delta` discount. Variable route cost is `Option.cost` in FCFA per physical kg.
-4. **Allocation:** the LP maximizes P50-based expected net value over full-price and
-   discounted-surplus tiers, with one market constraint per market, per-route throughput
-   limits, and shared capacity per storage site. A zero-revenue discard variable ensures
-   that every physical kg is accounted for; discarded quantity is returned explicitly.
+4. **Allocation:** the LP maximizes a linear expected-value approximation using Monte Carlo
+   mean retained value fractions over full-price and discounted-surplus tiers, with one
+   market constraint per market, per-route throughput limits, and shared capacity per
+   storage site. A zero-revenue discard variable ensures that every physical kg is accounted
+   for; discarded quantity is returned explicitly. The fixed plan is then evaluated across
+   the shared draws and reported with P10/P50/P90.
 5. **Decision:** the policy score is `net P50 - lam * (net P50 - net P10)`. When the score
    gap is below materiality and the Monte Carlo best probability is low, the engine returns
    `best_id=None` rather than inventing a winner. Reason codes are deterministic; prose is
-   left to the application layer.
+   left to the application layer. `HIGH_TEMP` uses the nominal effective mean product
+   temperature (air + packaging + storage offset), strictly above 30 °C, not one random draw.
 
 ## Contract notes for P3 / backend
 
@@ -56,8 +60,9 @@ The original `Option` positional fields are unchanged; two optional fields were 
 The previously unspecified `Option.cost` unit is now explicit: **FCFA per physical kg**.
 These are additive/backward-compatible shape clarifications on the `feat/spectre-core`
 branch, but P3/backend should review them before integration. `Option.kg` is the route's
-maximum throughput; a whole-lot single-action result is infeasible if that route or storage
-site cannot hold the entire lot, while the allocation LP may still use it for a partial lot.
+maximum throughput and may exceed the lot quantity; a whole-lot single-action result is
+infeasible if that route or its storage site cannot hold the entire lot, while the allocation
+LP may still use it for a partial lot.
 
 The `Shocks` contract currently supplies one `price` and one `absorb` vector, shared by all
 routes and markets within each draw. This correctly pairs alternatives for common-random-
@@ -77,6 +82,14 @@ that requires a versioned P3 contract extension, not an implicit shape change he
   remain assumptions until calibrated.
 - No LLM produces or edits numeric results. The exact simulation arrays and summaries are
   source-of-truth outputs.
+
+## Hackathon submission note
+
+The official Build With AI: Basics rules also require the project-wide `devpost/scope.md`,
+`devpost/prd.md`, and `devpost/spec.md` produced through the Learn Skill Pack, plus a public
+repository/license and a sub-three-minute demo video. This core-only branch does not claim
+to satisfy those team-level submission requirements and does not fabricate those planning
+artifacts; the project team must complete and review them separately.
 
 ## Verification
 

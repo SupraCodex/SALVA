@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Sequence
 
 import numpy as np
 
@@ -12,13 +12,18 @@ from ..params import ProductParams
 from .allocation import optimize
 from .economics import evaluate_portfolio, option_draws, validate_option
 from .models import ScenarioResult
-from .uncertainty import DEFAULT_DRAWS, draw, validate as validate_shocks
+from .uncertainty import DEFAULT_DRAWS, MIN_DRAWS, ShockValidationError, draw
+from .uncertainty import validate as validate_shocks
 
 RESERVED_SPLIT_ID = "optimized_split"
 
 
 def _best_probabilities(results: Sequence[ScenarioResult]) -> list[float]:
-    eligible = [i for i, result in enumerate(results) if result.feasible and not result.discouraged]
+    eligible = [
+        i
+        for i, result in enumerate(results)
+        if result.feasible and not result.discouraged
+    ]
     probabilities = [0.0] * len(results)
     if not eligible:
         return probabilities
@@ -26,7 +31,9 @@ def _best_probabilities(results: Sequence[ScenarioResult]) -> list[float]:
     if any(x.ndim != 1 or x.size == 0 for x in matrices):
         return probabilities
     if len({x.size for x in matrices}) != 1:
-        raise ValueError("feasible results must contain the same number of Monte Carlo draws")
+        raise ValueError(
+            "feasible results must contain the same number of Monte Carlo draws"
+        )
     stacked = np.vstack(matrices)
     best = np.max(stacked, axis=0)
     tied = np.isclose(stacked, best[None, :], rtol=1e-10, atol=1e-8)
@@ -64,6 +71,10 @@ def run_all(
     if RESERVED_SPLIT_ID in ids:
         raise ValueError(f"option id {RESERVED_SPLIT_ID!r} is reserved")
     s = validate_shocks(shocks)
+    if s.u.size < MIN_DRAWS:
+        raise ShockValidationError(
+            f"run_all requires at least {MIN_DRAWS} Monte Carlo draws"
+        )
     draws_by_id = {}
     results: list[ScenarioResult] = []
     for option in opts:
@@ -73,55 +84,79 @@ def run_all(
         if option.is_store and option.storage_capacity_kg is not None:
             route_capacity = min(route_capacity, option.storage_capacity_kg)
         if route_capacity + 1e-9 < lot.kg:
-            reason = "STORAGE_CAPACITY_BELOW_LOT" if option.is_store and route_capacity < option.kg else "OPTION_CAPACITY_BELOW_LOT"
-            results.append(ScenarioResult(
-                id=option.id,
-                action=option.action,
-                feasible=False,
-                loss_p10=None, loss_p50=None, loss_p90=None,
-                recoverable_kg_p10=None, recoverable_kg_p50=None, recoverable_kg_p90=None,
-                gross_value_p10=None, gross_value_p50=None, gross_value_p90=None,
-                net_p10=None, net_p50=None, net_p90=None,
-                infeasible_reason=reason,
-                temp_max_c=draws_by_id[option.id].temp_max_c,
-                delay_h=float(lot.delay_h),
-                extra_h=float(option.extra_h),
-            ))
+            reason = (
+                "STORAGE_CAPACITY_BELOW_LOT"
+                if option.is_store and route_capacity < option.kg
+                else "OPTION_CAPACITY_BELOW_LOT"
+            )
+            results.append(
+                ScenarioResult(
+                    id=option.id,
+                    action=option.action,
+                    feasible=False,
+                    loss_p10=None,
+                    loss_p50=None,
+                    loss_p90=None,
+                    recoverable_kg_p10=None,
+                    recoverable_kg_p50=None,
+                    recoverable_kg_p90=None,
+                    gross_value_p10=None,
+                    gross_value_p50=None,
+                    gross_value_p90=None,
+                    net_p10=None,
+                    net_p50=None,
+                    net_p90=None,
+                    infeasible_reason=reason,
+                    temp_mean_c=draws_by_id[option.id].temp_mean_c,
+                    temp_max_c=draws_by_id[option.id].temp_max_c,
+                    delay_h=float(lot.delay_h),
+                    extra_h=float(option.extra_h),
+                )
+            )
         else:
-            results.append(evaluate_portfolio(
-                lot,
-                [option],
-                {option.id: float(lot.kg)},
-                {option.id: draws_by_id[option.id]},
-                s,
-                params,
-                scenario_id=option.id,
-                action=option.action,
-            ))
+            results.append(
+                evaluate_portfolio(
+                    lot,
+                    [option],
+                    {option.id: float(lot.kg)},
+                    {option.id: draws_by_id[option.id]},
+                    s,
+                    params,
+                    scenario_id=option.id,
+                    action=option.action,
+                )
+            )
 
     if include_allocation and len(opts) >= 2:
-        median_values = [float(np.median(draws_by_id[option.id].value_fraction)) for option in opts]
-        plan = optimize(lot.kg, opts, median_values, params, store_cap=store_cap)
+        mean_values = [
+            float(np.mean(draws_by_id[option.id].value_fraction)) for option in opts
+        ]
+        plan = optimize(lot.kg, opts, mean_values, params, store_cap=store_cap)
         quantities = {line.option_id: line.kg for line in plan.lines}
         # The optimized alternative is informative when it really splits the lot or
         # explicitly rejects part/all of it. A one-route full-lot optimum duplicates a
         # candidate and would bias probability mass through a mathematically identical row.
         if len(plan.lines) > 1 or plan.discarded_kg > 1e-8:
-            results.append(evaluate_portfolio(
-                lot,
-                opts,
-                quantities,
-                draws_by_id,
-                s,
-                params,
-                scenario_id=RESERVED_SPLIT_ID,
-                action="optimized_split",
-                allocation=plan,
-                discarded_kg=plan.discarded_kg,
-            ))
+            results.append(
+                evaluate_portfolio(
+                    lot,
+                    opts,
+                    quantities,
+                    draws_by_id,
+                    s,
+                    params,
+                    scenario_id=RESERVED_SPLIT_ID,
+                    action="optimized_split",
+                    allocation=plan,
+                    discarded_kg=plan.discarded_kg,
+                )
+            )
 
     probabilities = _best_probabilities(results)
-    return [replace(result, prob_best=prob) for result, prob in zip(results, probabilities, strict=True)]
+    return [
+        replace(result, prob_best=prob)
+        for result, prob in zip(results, probabilities, strict=True)
+    ]
 
 
 class SimulationEngine:

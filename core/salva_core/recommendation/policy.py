@@ -32,9 +32,16 @@ class Policy:
     long_detour_threshold_h: float | None = None
 
     def __post_init__(self) -> None:
-        for name in ("lam", "materiality", "high_probability", "medium_probability",
-                     "clear_probability", "high_gap_fraction", "saturation_fraction",
-                     "storage_binding_tolerance"):
+        for name in (
+            "lam",
+            "materiality",
+            "high_probability",
+            "medium_probability",
+            "clear_probability",
+            "high_gap_fraction",
+            "saturation_fraction",
+            "storage_binding_tolerance",
+        ):
             value = float(getattr(self, name))
             if not isfinite(value) or not 0.0 <= value <= 1.0:
                 raise ValueError(f"{name} must be finite and in [0, 1]")
@@ -44,13 +51,19 @@ class Policy:
             if not isfinite(float(getattr(self, name))):
                 raise ValueError(f"{name} must be finite")
         if self.reference_value_fcfa is not None and (
-            not isfinite(float(self.reference_value_fcfa)) or self.reference_value_fcfa <= 0
+            not isfinite(float(self.reference_value_fcfa))
+            or self.reference_value_fcfa <= 0
         ):
-            raise ValueError("reference_value_fcfa must be finite and > 0 when provided")
+            raise ValueError(
+                "reference_value_fcfa must be finite and > 0 when provided"
+            )
         if self.long_detour_threshold_h is not None and (
-            not isfinite(float(self.long_detour_threshold_h)) or self.long_detour_threshold_h < 0
+            not isfinite(float(self.long_detour_threshold_h))
+            or self.long_detour_threshold_h < 0
         ):
-            raise ValueError("long_detour_threshold_h must be finite and >= 0 when provided")
+            raise ValueError(
+                "long_detour_threshold_h must be finite and >= 0 when provided"
+            )
 
 
 @dataclass(frozen=True)

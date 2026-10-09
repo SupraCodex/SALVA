@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -33,7 +33,10 @@ def _probabilities(results: Sequence[ScenarioResult]) -> dict[str, float]:
         return {r.id: float(p) for r, p in zip(eligible, supplied, strict=True)}
 
     vectors = [np.asarray(r.net_draws, dtype=float) for r in eligible]
-    if all(x.ndim == 1 and x.size > 0 for x in vectors) and len({x.size for x in vectors}) == 1:
+    if (
+        all(x.ndim == 1 and x.size > 0 for x in vectors)
+        and len({x.size for x in vectors}) == 1
+    ):
         stacked = np.vstack(vectors)
         best = np.max(stacked, axis=0)
         ties = np.isclose(stacked, best[None, :], rtol=1e-10, atol=1e-8)
@@ -44,7 +47,9 @@ def _probabilities(results: Sequence[ScenarioResult]) -> dict[str, float]:
     return {r.id: 0.0 for r in eligible}
 
 
-def recommend(results: Sequence[ScenarioResult], policy: Policy | None = None) -> Recommendation:
+def recommend(
+    results: Sequence[ScenarioResult], policy: Policy | None = None
+) -> Recommendation:
     """Return a best option or explicitly decline to name a winner.
 
     This two-argument adapter surface is stable for backend/ML consumers:
@@ -86,7 +91,11 @@ def recommend(results: Sequence[ScenarioResult], policy: Policy | None = None) -
         )
         gap = max(0.0, (best_score - scores[1]) / denominator)
 
-    unclear = len(scored) > 1 and gap < chosen_policy.materiality and best_probability < chosen_policy.clear_probability
+    unclear = (
+        len(scored) > 1
+        and gap < chosen_policy.materiality
+        and best_probability < chosen_policy.clear_probability
+    )
     if unclear:
         return Recommendation(
             best_id=None,
@@ -99,7 +108,10 @@ def recommend(results: Sequence[ScenarioResult], policy: Policy | None = None) -
             no_clear_winner=True,
         )
 
-    if best_probability >= chosen_policy.high_probability and gap >= chosen_policy.high_gap_fraction:
+    if (
+        best_probability >= chosen_policy.high_probability
+        and gap >= chosen_policy.high_gap_fraction
+    ):
         confidence = "high"
     elif best_probability >= chosen_policy.medium_probability:
         confidence = "medium"

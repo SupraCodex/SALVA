@@ -9,7 +9,7 @@ import numpy as np
 from ..contracts import Shocks
 
 DEFAULT_DRAWS = 2_000
-MIN_DRAWS = 100
+MIN_DRAWS = 1_000
 MAX_DRAWS = 20_000
 TEMPERATURE_SIGMA_C = 1.5
 TRANSIT_LOG_SIGMA = 0.2
@@ -28,8 +28,14 @@ def draw(n: int = DEFAULT_DRAWS, seed: int = 42) -> Shocks:
     one, matching the design specification. The same vector is intentionally reused by
     every action. ``u`` is kept strictly inside (0, 1) for inverse-normal quantile models.
     """
-    if isinstance(n, bool) or not isinstance(n, Integral) or not MIN_DRAWS <= int(n) <= MAX_DRAWS:
-        raise ShockValidationError(f"n must be an integer in [{MIN_DRAWS}, {MAX_DRAWS}]")
+    if (
+        isinstance(n, bool)
+        or not isinstance(n, Integral)
+        or not MIN_DRAWS <= int(n) <= MAX_DRAWS
+    ):
+        raise ShockValidationError(
+            f"n must be an integer in [{MIN_DRAWS}, {MAX_DRAWS}]"
+        )
     if isinstance(seed, bool) or not isinstance(seed, Integral) or int(seed) < 0:
         raise ShockValidationError("seed must be a non-negative integer")
 
@@ -56,7 +62,9 @@ def validate(shocks: Shocks, n: int | None = None) -> Shocks:
         try:
             arr = np.asarray(getattr(shocks, name), dtype=float)
         except (AttributeError, TypeError, ValueError) as exc:
-            raise ShockValidationError(f"shocks.{name} must be a numeric vector") from exc
+            raise ShockValidationError(
+                f"shocks.{name} must be a numeric vector"
+            ) from exc
         if arr.ndim != 1 or arr.size == 0:
             raise ShockValidationError(f"shocks.{name} must be a non-empty 1-D vector")
         if not np.all(np.isfinite(arr)):
@@ -64,7 +72,9 @@ def validate(shocks: Shocks, n: int | None = None) -> Shocks:
         arrays[name] = arr
         lengths.add(arr.size)
     if len(lengths) != 1:
-        raise ShockValidationError("all shock vectors must have the same number of draws")
+        raise ShockValidationError(
+            "all shock vectors must have the same number of draws"
+        )
     actual_n = lengths.pop()
     if n is not None and actual_n != n:
         raise ShockValidationError(f"expected {n} draws, received {actual_n}")

@@ -86,13 +86,22 @@ class ScenarioResult:
     discouraged: bool = False
     infeasible_reason: str | None = None
     allocation: AllocationPlan | None = None
-    net_draws: np.ndarray = field(default_factory=lambda: np.empty(0), repr=False, compare=False)
-    loss_draws: np.ndarray = field(default_factory=lambda: np.empty(0), repr=False, compare=False)
-    recoverable_draws: np.ndarray = field(default_factory=lambda: np.empty(0), repr=False, compare=False)
-    gross_draws: np.ndarray = field(default_factory=lambda: np.empty(0), repr=False, compare=False)
+    net_draws: np.ndarray = field(
+        default_factory=lambda: np.empty(0), repr=False, compare=False
+    )
+    loss_draws: np.ndarray = field(
+        default_factory=lambda: np.empty(0), repr=False, compare=False
+    )
+    recoverable_draws: np.ndarray = field(
+        default_factory=lambda: np.empty(0), repr=False, compare=False
+    )
+    gross_draws: np.ndarray = field(
+        default_factory=lambda: np.empty(0), repr=False, compare=False
+    )
     surplus_fraction_p50: float = 0.0
     storage_used_kg: float = 0.0
     storage_capacity_kg: float = 0.0
+    temp_mean_c: float | None = None
     temp_max_c: float | None = None
     delay_h: float = 0.0
     extra_h: float = 0.0
@@ -134,11 +143,16 @@ class ScenarioResult:
                 "p50": self.gross_value_p50,
                 "p90": self.gross_value_p90,
             },
-            "net_value_fcfa": {"p10": self.net_p10, "p50": self.net_p50, "p90": self.net_p90},
+            "net_value_fcfa": {
+                "p10": self.net_p10,
+                "p50": self.net_p50,
+                "p90": self.net_p90,
+            },
             "prob_best": self.prob_best,
             "surplus_fraction_p50": self.surplus_fraction_p50,
             "storage_used_kg": self.storage_used_kg,
             "storage_capacity_kg": self.storage_capacity_kg,
+            "temp_mean_c": self.temp_mean_c,
             "temp_max_c": self.temp_max_c,
             "delay_h": self.delay_h,
             "extra_h": self.extra_h,
