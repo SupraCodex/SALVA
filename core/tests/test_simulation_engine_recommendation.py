@@ -89,7 +89,12 @@ def test_real_kinetic_model_runs_two_thousand_draws_end_to_end():
         if result.feasible:
             assert result.loss_p10 <= result.loss_p50 <= result.loss_p90
             assert result.net_p10 <= result.net_p50 <= result.net_p90
-    assert sum(r.prob_best for r in results if r.feasible) == pytest.approx(1.0)
+    eligible = [r for r in results if r.feasible and not r.discouraged]
+    if eligible:
+        assert sum(r.prob_best for r in eligible) == pytest.approx(1.0)
+    else:
+        assert all(r.prob_best == 0.0 for r in results)
+        assert any(r.discouraged for r in results if r.feasible)
 
 
 def test_high_temp_reason_uses_nominal_mean_and_strict_threshold():

@@ -54,10 +54,24 @@ shocks, contrary to the design document's independent-market assumption. A futur
 contract should define stable market ids and per-market shock columns/maps, with tests and
 review from P3.
 
-## Open contract gap: shelf-life discouragement
+## Shelf-life and risk contracts
 
-RM-4 refers to remaining shelf-life P50, but `LossModel` currently exposes only a loss
-fraction at specified conditions. There is no validated mapping from that fraction to
-remaining hours or a universal reject threshold. Core therefore does not invent one.
-A future extension should define the shelf-life threshold and the producer/consumer for the
-result; until then a validated upstream policy may set `ScenarioResult.discouraged=True`.
+RM-4 is implemented as an optional model capability:
+
+- a model may expose `remaining_shelf_life_p50_h(features) -> scalar hours`;
+- `run_all` compares that estimate with the nominal route transit and sets
+  `ScenarioResult.discouraged=True` plus `discouraged_reason=SHELF_LIFE_P50_EXCEEDED`;
+- discouraged routes remain measurable but are excluded from best-action probabilities,
+  recommendation and optimized allocation;
+- the kinetic model implements this capability using the product's explicit
+  `shelf_life_loss_threshold`. That threshold is currently an assumption and must be
+  calibrated before it is presented as an expiry guarantee.
+
+RM-5 is implemented by `salva_core.risk.classify_risk`: product-configured P50-loss and
+P10–P90-width thresholds are combined conservatively, taking the higher resulting level.
+The result is exposed as `ScenarioResult.risk_level` and is calculated from the same draws
+used for the economic result.
+
+`analyze_sensitivity` is an optional grid API over temperature and delay. It calls the
+production simulation and recommendation paths for every grid cell and reports actual
+action transitions; it does not fit a second surrogate model.

@@ -48,6 +48,15 @@ convenience API that creates the shocks and calls the same adapter.
    `best_id=None` rather than inventing a winner. Reason codes are deterministic; prose is
    left to the application layer. `HIGH_TEMP` uses the nominal effective mean product
    temperature (air + packaging + storage offset), strictly above 30 °C, not one random draw.
+6. **Risk and shelf life:** feasible results expose a product-configured risk level derived
+   from loss P50 and P10-P90 width. Models implementing the optional
+   `remaining_shelf_life_p50_h` contract can mark a route `discouraged` when nominal transit
+   exceeds that estimate; discouraged routes are excluded from best-action probabilities and
+   optimized allocation. The kinetic implementation labels its threshold as an assumption,
+   not a validated expiry guarantee.
+7. **Sensitivity:** `analyze_sensitivity` evaluates a temperature/delay grid through the
+   same `run_all` and recommendation code, with one common shock bundle for every cell, and
+   reports only actual action boundaries.
 
 ## Contract notes for P3 / backend
 

@@ -58,3 +58,53 @@ class KineticLossModel:
 
             factors = explain(self, f, self.params)
         return LossDistribution(p10=p10, p50=p50, p90=p90, top_factors=factors)
+
+    def remaining_shelf_life_p50_h(self, f: ConditionFeatures) -> np.ndarray:
+        """Estimate hours until the configured P50 commercial-loss threshold.
+
+        The estimate uses the P50 lot multiplier and holds the current effective
+        temperature, maturity and packaging constant.  It is therefore a model
+        estimate, not a field-validated expiry guarantee.  The threshold is stored in
+        ``ProductParams`` so the backend can display its provenance.
+        """
+        if any(
+            np.ndim(getattr(f, name)) != 0
+            for name in ("temp_mean_c", "temp_max_c", "age_h")
+        ):
+            raise ValueError("remaining_shelf_life_p50_h requires one feature row")
+        q_now = float(
+            kinetics.mean_quality(
+                kinetics.degradation_rate(
+                    f.temp_mean_c,
+                    f.temp_max_c,
+                    f.maturity,
+                    self.lot_multiplier(0.5),
+                    self.params,
+                ),
+                f.age_h,
+            )
+        )
+        current_loss = float(kinetics.value_loss(q_now, f.packaging, self.params))
+        lo, hi = 1e-12, 1.0
+        for _ in range(60):
+            mid = (lo + hi) / 2.0
+            if (
+                float(kinetics.value_loss(mid, f.packaging, self.params))
+                > self.params.shelf_life_loss_threshold
+            ):
+                lo = mid
+            else:
+                hi = mid
+        target_quality = hi
+        rate = float(
+            kinetics.degradation_rate(
+                f.temp_mean_c,
+                f.temp_max_c,
+                f.maturity,
+                self.lot_multiplier(0.5),
+                self.params,
+            )
+        )
+        if current_loss >= self.params.shelf_life_loss_threshold:
+            return np.asarray(0.0)
+        return np.asarray(max(0.0, np.log(q_now / target_quality) / max(rate, 1e-12)))

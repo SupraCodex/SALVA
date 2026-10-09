@@ -25,12 +25,14 @@ REQUIRED_SCALARS = (
     "sigma_lot",
     "delta",
     "default_diurnal_amp_c",
+    "shelf_life_loss_threshold",
 )
 REQUIRED_MAPPINGS = (
     "maturity",
     "pack_delta_c",
     "pack_damage",
     "storage_temp_offset_c",
+    "risk_thresholds",
 )
 
 
@@ -74,6 +76,8 @@ class ProductParams:
     pack_damage: dict[str, float]
     storage_temp_offset_c: dict[str, float]
     grades: tuple[tuple[float, float], ...]
+    shelf_life_loss_threshold: float
+    risk_thresholds: dict[str, float]
     valid_ranges: dict[str, dict[str, float]] = field(default_factory=dict)
     sources: dict[str, str] = field(default_factory=dict)
     file_sha256: str = ""
@@ -138,6 +142,24 @@ def _validate(p: ProductParams) -> None:
         raise ParamsError(f"{p.name}: delta must be in [0, 1]")
     if p.default_diurnal_amp_c < 0:
         raise ParamsError(f"{p.name}: default_diurnal_amp_c must be >= 0")
+    if not 0 < p.shelf_life_loss_threshold < 1:
+        raise ParamsError(f"{p.name}: shelf_life_loss_threshold must be in (0, 1)")
+    required_risk = {
+        "low_p50_max",
+        "medium_p50_max",
+        "low_width_max",
+        "medium_width_max",
+    }
+    if set(p.risk_thresholds) != required_risk:
+        raise ParamsError(
+            f"{p.name}: risk_thresholds must contain {sorted(required_risk)}"
+        )
+    if not all(0 < v < 1 for v in p.risk_thresholds.values()):
+        raise ParamsError(f"{p.name}: risk thresholds must be in (0, 1)")
+    if not p.risk_thresholds["low_p50_max"] < p.risk_thresholds["medium_p50_max"]:
+        raise ParamsError(f"{p.name}: low_p50_max must be below medium_p50_max")
+    if not p.risk_thresholds["low_width_max"] <= p.risk_thresholds["medium_width_max"]:
+        raise ParamsError(f"{p.name}: low_width_max must be <= medium_width_max")
     order = p.maturity_order
     vals = [p.maturity[k] for k in order]
     if any(v <= 0 for v in vals) or len(set(vals)) != len(vals):

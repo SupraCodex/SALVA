@@ -2,6 +2,16 @@
 
 from .allocation import AllocationError, optimize
 from .engine import SimulationEngine, run_all
+from .sensitivity import SensitivityResult, SensitivityTransition, analyze_sensitivity
 from .uncertainty import draw
 
-__all__ = ["AllocationError", "SimulationEngine", "draw", "optimize", "run_all"]
+__all__ = [
+    "AllocationError",
+    "SensitivityResult",
+    "SensitivityTransition",
+    "SimulationEngine",
+    "analyze_sensitivity",
+    "draw",
+    "optimize",
+    "run_all",
+]

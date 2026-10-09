@@ -77,9 +77,18 @@ def run_all(
         )
     draws_by_id = {}
     results: list[ScenarioResult] = []
+    active_options: list[Option] = []
     for option in opts:
         validate_option(lot, option)
-        draws_by_id[option.id] = option_draws(model, lot, option, s, params)
+        option_draw = option_draws(model, lot, option, s, params)
+        draws_by_id[option.id] = option_draw
+        shelf_life_exceeded = (
+            option_draw.remaining_shelf_life_p50_h is not None
+            and lot.remaining_h + option.extra_h
+            > option_draw.remaining_shelf_life_p50_h + 1e-9
+        )
+        if not shelf_life_exceeded:
+            active_options.append(option)
         route_capacity = option.kg
         if option.is_store and option.storage_capacity_kg is not None:
             route_capacity = min(route_capacity, option.storage_capacity_kg)
@@ -114,24 +123,32 @@ def run_all(
                 )
             )
         else:
-            results.append(
-                evaluate_portfolio(
-                    lot,
-                    [option],
-                    {option.id: float(lot.kg)},
-                    {option.id: draws_by_id[option.id]},
-                    s,
-                    params,
-                    scenario_id=option.id,
-                    action=option.action,
-                )
+            result = evaluate_portfolio(
+                lot,
+                [option],
+                {option.id: float(lot.kg)},
+                {option.id: draws_by_id[option.id]},
+                s,
+                params,
+                scenario_id=option.id,
+                action=option.action,
             )
+            if shelf_life_exceeded:
+                result = replace(
+                    result,
+                    discouraged=True,
+                    discouraged_reason="SHELF_LIFE_P50_EXCEEDED",
+                )
+            results.append(result)
 
-    if include_allocation and len(opts) >= 2:
+    if include_allocation and len(active_options) >= 2:
         mean_values = [
-            float(np.mean(draws_by_id[option.id].value_fraction)) for option in opts
+            float(np.mean(draws_by_id[option.id].value_fraction))
+            for option in active_options
         ]
-        plan = optimize(lot.kg, opts, mean_values, params, store_cap=store_cap)
+        plan = optimize(
+            lot.kg, active_options, mean_values, params, store_cap=store_cap
+        )
         quantities = {line.option_id: line.kg for line in plan.lines}
         # The optimized alternative is informative when it really splits the lot or
         # explicitly rejects part/all of it. A one-route full-lot optimum duplicates a
@@ -140,7 +157,7 @@ def run_all(
             results.append(
                 evaluate_portfolio(
                     lot,
-                    opts,
+                    active_options,
                     quantities,
                     draws_by_id,
                     s,

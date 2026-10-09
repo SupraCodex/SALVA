@@ -87,7 +87,9 @@ class ScenarioResult:
     net_p50: float | None
     net_p90: float | None
     prob_best: float = 0.0
+    risk_level: str | None = None
     discouraged: bool = False
+    discouraged_reason: str | None = None
     infeasible_reason: str | None = None
     allocation: AllocationPlan | None = None
     net_draws: np.ndarray = field(
@@ -138,6 +140,7 @@ class ScenarioResult:
             "action": self.action,
             "feasible": self.feasible,
             "discouraged": self.discouraged,
+            "discouraged_reason": self.discouraged_reason,
             "infeasible_reason": self.infeasible_reason,
             "loss": {"p10": self.loss_p10, "p50": self.loss_p50, "p90": self.loss_p90},
             "recoverable_kg": {
@@ -156,6 +159,7 @@ class ScenarioResult:
                 "p90": self.net_p90,
             },
             "prob_best": self.prob_best,
+            "risk_level": self.risk_level,
             "surplus_fraction_p50": self.surplus_fraction_p50,
             "storage_used_kg": self.storage_used_kg,
             "storage_capacity_kg": self.storage_capacity_kg,

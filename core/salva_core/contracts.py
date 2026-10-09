@@ -108,7 +108,12 @@ class LossDistribution:
 
 @runtime_checkable
 class LossModel(Protocol):
-    """What the simulation needs from any loss model (kinetic or LightGBM)."""
+    """What the simulation needs from any loss model (kinetic or LightGBM).
+
+    Models may additionally expose ``remaining_shelf_life_p50_h(features)``.  This
+    optional capability is intentionally discovered at runtime so existing ML adapters
+    remain valid while RM-4 can use a validated shelf-life implementation.
+    """
 
     version: str
 

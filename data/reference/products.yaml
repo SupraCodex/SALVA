@@ -68,6 +68,12 @@ tomato:
         when the caller provides no maximum temperature.
       source: assumption
       note: Replace by weather-API derived value when available.
+    shelf_life_loss_threshold:
+      value: 0.25
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Business threshold pending field validation; not a scientific constant.
     maturity:
       value: {green: 0.6, breaker: 1.0, ripe: 2.0}
       unit: dimensionless multiplier on k
@@ -100,6 +106,12 @@ tomato:
       note: >
         Chilling injury of tomato at low temperature is NOT modelled; cold_room
         results are optimistic. Verify literature before relying on cold_room.
+    risk_thresholds:
+      value: {low_p50_max: 0.10, medium_p50_max: 0.25, low_width_max: 0.20, medium_width_max: 0.35}
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty width.
+      source: assumption
+      note: Starting business rules pending calibration with field users and outcomes.
     grades:
       value: [[0.80, 1.0], [0.60, 0.6], [0.40, 0.3]]
       unit: "[quality threshold in (0,1), price multiplier in [0,1]]"

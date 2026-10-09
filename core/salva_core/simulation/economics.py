@@ -8,14 +8,14 @@ from math import isfinite
 
 import numpy as np
 
-from ..contracts import Lot, Option, Shocks
+from ..contracts import LossDistribution, Lot, Option, Shocks
 from ..features import assemble, build
 from ..params import ProductParams
+from ..risk import classify_risk
 from .models import AllocationPlan, ScenarioResult
 from .uncertainty import validate as validate_shocks
 
 _TOL = 1e-9
-_ACTIONS = frozenset({"continue", "store", "reroute", "sell_local"})
 _ACTIONS = frozenset({"continue", "store", "reroute", "sell_local"})
 
 
@@ -31,6 +31,7 @@ class OptionDraws:
     value_fraction: np.ndarray
     temp_mean_c: float
     temp_max_c: float
+    remaining_shelf_life_p50_h: float | None = None
 
 
 def _finite_nonnegative(value: float, field: str) -> float:
@@ -46,11 +47,6 @@ def validate_option(lot: Lot, option: Option) -> None:
         raise EconomicsError("option.id must be a non-empty string")
     if not option.action or not isinstance(option.action, str):
         raise EconomicsError(f"option {option.id}: action must be a non-empty string")
-    if option.action not in _ACTIONS:
-        raise EconomicsError(
-            f"option {option.id}: unsupported action {option.action!r}; "
-            f"allowed: {sorted(_ACTIONS)}"
-        )
     if option.action not in _ACTIONS:
         raise EconomicsError(
             f"option {option.id}: unsupported action {option.action!r}; "
@@ -139,11 +135,21 @@ def option_draws(
             "LossModel.sample_loss must return finite loss fractions in [0, 1]"
         )
     loss = np.clip(loss, 0.0, 1.0)
+    shelf_life = None
+    estimate_shelf_life = getattr(model, "remaining_shelf_life_p50_h", None)
+    if estimate_shelf_life is not None:
+        estimate = np.asarray(estimate_shelf_life(baseline), dtype=float)
+        if estimate.size != 1 or not np.isfinite(estimate).all():
+            raise EconomicsError(
+                "LossModel.remaining_shelf_life_p50_h must return one finite scalar"
+            )
+        shelf_life = float(estimate.flat[0])
     return OptionDraws(
         loss=loss,
         value_fraction=1.0 - loss,
         temp_mean_c=float(np.asarray(baseline.temp_mean_c).flat[0]),
         temp_max_c=float(np.asarray(baseline.temp_max_c).flat[0]),
+        remaining_shelf_life_p50_h=shelf_life,
     )
 
 
@@ -302,6 +308,12 @@ def evaluate_portfolio(
         net_p10=_quantile(net, 0.10),
         net_p50=_quantile(net, 0.50),
         net_p90=_quantile(net, 0.90),
+        risk_level=classify_risk(
+            LossDistribution(
+                _quantile(loss, 0.10), _quantile(loss, 0.50), _quantile(loss, 0.90)
+            ),
+            params,
+        ).level,
         allocation=allocation,
         net_draws=net,
         loss_draws=loss,
