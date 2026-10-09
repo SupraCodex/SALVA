@@ -176,6 +176,17 @@ def run_all(
                 )
             )
 
+    # RM materiality is expressed relative to the nominal value of the lot, not
+    # relative to whichever net score happens to rank first. Use the highest configured
+    # market quote at full lot quantity before loss, surplus discount, or route cost; a
+    # caller can override this reference explicitly through Policy.
+    lot_reference_value_fcfa = lot.kg * max(
+        float(option.market.price) for option in opts
+    )
+    results = [
+        replace(result, lot_reference_value_fcfa=lot_reference_value_fcfa)
+        for result in results
+    ]
     probabilities = _best_probabilities(results)
     return [
         replace(result, prob_best=prob)

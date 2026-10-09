@@ -94,6 +94,7 @@ class ProductParams:
     valid_ranges: dict[str, dict[str, float]] = field(default_factory=dict)
     sources: dict[str, str] = field(default_factory=dict)
     file_sha256: str = ""
+    calibration_ranges: dict[str, dict[str, float]] = field(default_factory=dict)
 
     @property
     def maturity_order(self) -> tuple[str, ...]:
@@ -193,29 +194,29 @@ def _validate(p: ProductParams) -> None:
                 f"{p.name}.{key}: expected categories {sorted(expected)}, "
                 f"got {sorted(mapping)}"
             )
-    if not isinstance(p.valid_ranges, dict):
-        raise ParamsError(f"{p.name}.valid_ranges must be a mapping")
-    for feature, bounds in p.valid_ranges.items():
-        try:
-            lower = _as_finite_float(
-                bounds["min"], f"{p.name}.valid_ranges.{feature}.min"
-            )
-            upper = _as_finite_float(
-                bounds["max"], f"{p.name}.valid_ranges.{feature}.max"
-            )
-            valid_bounds = (
-                isinstance(bounds, dict)
-                and {"min", "max"} <= set(bounds)
-                and np.isfinite(lower)
-                and np.isfinite(upper)
-                and lower <= upper
-            )
-        except (KeyError, TypeError, ValueError):
-            valid_bounds = False
-        if feature not in VALID_RANGE_FEATURES or not valid_bounds:
-            raise ParamsError(
-                f"{p.name}.valid_ranges.{feature}: expected finite min <= max"
-            )
+    for range_name, ranges in (
+        ("valid_ranges", p.valid_ranges),
+        ("calibration_ranges", p.calibration_ranges),
+    ):
+        if not isinstance(ranges, dict):
+            raise ParamsError(f"{p.name}.{range_name} must be a mapping")
+        for feature, bounds in ranges.items():
+            try:
+                if not isinstance(bounds, dict) or not {"min", "max"} <= set(bounds):
+                    raise ValueError("missing min/max")
+                lower = _as_finite_float(
+                    bounds["min"], f"{p.name}.{range_name}.{feature}.min"
+                )
+                upper = _as_finite_float(
+                    bounds["max"], f"{p.name}.{range_name}.{feature}.max"
+                )
+                valid_bounds = lower <= upper
+            except (KeyError, TypeError, ValueError):
+                valid_bounds = False
+            if feature not in VALID_RANGE_FEATURES or not valid_bounds:
+                raise ParamsError(
+                    f"{p.name}.{range_name}.{feature}: expected finite min <= max"
+                )
     if not (p.k_ref > 0 and p.q10 >= 1 and p.sigma_h > 0 and p.sigma_lot >= 0):
         raise ParamsError(
             f"{p.name}: k_ref>0, q10>=1, sigma_h>0, sigma_lot>=0 required"
@@ -332,6 +333,9 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
         valid_ranges = body.get("valid_ranges", {})
         if not isinstance(valid_ranges, dict):
             raise ParamsError(f"{name}.valid_ranges must be a mapping")
+        calibration_ranges = body.get("calibration_ranges", valid_ranges)
+        if not isinstance(calibration_ranges, dict):
+            raise ParamsError(f"{name}.calibration_ranges must be a mapping")
         product = ProductParams(
             name=name,
             t_ref_c=scalars["t_ref_c"],
@@ -351,6 +355,7 @@ def load_products(path: Path | str | None = None) -> dict[str, ProductParams]:
             valid_ranges=valid_ranges,
             sources=sources,
             file_sha256=sha,
+            calibration_ranges=calibration_ranges,
         )
         _validate(product)
         products[name] = product

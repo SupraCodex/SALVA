@@ -19,8 +19,9 @@ class Policy:
     """Decision thresholds; none of these values alter simulation outputs.
 
     ``lam`` applies the downside-risk score ``P50 - lam * (P50 - P10)``.
-    ``reference_value_fcfa`` should be the lot's gross reference value when known; if
-    omitted, materiality is measured relative to the leading decision score.
+    ``reference_value_fcfa`` overrides the nominal lot reference carried by core
+    simulation results. For legacy results without that metadata, materiality falls back
+    to the leading decision score.
     """
 
     lam: float = 0.5

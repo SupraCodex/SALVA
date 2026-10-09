@@ -9,7 +9,14 @@ from typing import Any
 import numpy as np
 
 from ..contracts import ConditionFeatures, LossDistribution
-from ..features import MODEL_COLUMNS, feature_schema, n_rows, schema_hash, to_matrix
+from ..features import (
+    MODEL_COLUMNS,
+    feature_schema,
+    n_rows,
+    schema_hash,
+    to_matrix,
+    with_changes,
+)
 from ..params import ProductParams, load_product
 from .sampling import interp_quantiles, sort_and_clip
 
@@ -65,29 +72,69 @@ class LightGbmLossModel:
         self.params = params
         self.version = version
         self.metadata = metadata or {}
+        self.calibration_ranges = self._load_calibration_ranges()
 
-    def _matrix(self, f: ConditionFeatures) -> tuple[np.ndarray, tuple[str, ...]]:
-        """Encode and clip statistical-model inputs to documented calibration bounds."""
+    def _load_calibration_ranges(self) -> dict[str, dict[str, float]]:
+        """Use artifact feature support, falling back to the versioned planning envelope."""
+        fallback = self.params.calibration_ranges or self.params.valid_ranges
+        artifact_ranges = self.metadata.get("calibration_ranges", {})
+        if not isinstance(artifact_ranges, dict):
+            raise ModelSchemaMismatch("calibration_ranges metadata must be a mapping")
+        ranges = {**fallback, **artifact_ranges}
+        checked: dict[str, dict[str, float]] = {}
+        for name, bounds in ranges.items():
+            if name not in MODEL_COLUMNS or not isinstance(bounds, dict):
+                raise ModelSchemaMismatch(
+                    f"invalid calibration range entry for feature {name!r}"
+                )
+            try:
+                lower, upper = float(bounds["min"]), float(bounds["max"])
+            except (KeyError, TypeError, ValueError, OverflowError) as exc:
+                raise ModelSchemaMismatch(
+                    f"calibration range for {name!r} needs numeric min/max"
+                ) from exc
+            if not np.isfinite([lower, upper]).all() or lower > upper:
+                raise ModelSchemaMismatch(
+                    f"calibration range for {name!r} must be finite with min <= max"
+                )
+            checked[name] = {"min": lower, "max": upper}
+        if not checked:
+            raise ModelSchemaMismatch("no numeric calibration ranges are configured")
+        return checked
+
+    def _matrix(
+        self, f: ConditionFeatures
+    ) -> tuple[np.ndarray, tuple[str, ...], np.ndarray]:
+        """Encode, clip to calibration support, and retain row-level OOD flags."""
         x = to_matrix(f).copy()
         outside: list[str] = []
-        for name, bounds in self.params.valid_ranges.items():
+        outside_rows = np.zeros(x.shape[0], dtype=bool)
+        for name, bounds in self.calibration_ranges.items():
             if name not in MODEL_COLUMNS:
                 continue
             index = MODEL_COLUMNS.index(name)
             values = x[:, index]
-            if np.any((values < bounds["min"]) | (values > bounds["max"])):
+            row_outside = (values < bounds["min"]) | (values > bounds["max"])
+            if np.any(row_outside):
                 outside.append(name)
+                outside_rows |= row_outside
                 x[:, index] = np.clip(values, bounds["min"], bounds["max"])
-        return x, tuple(sorted(outside))
+        return x, tuple(sorted(outside)), outside_rows
 
     def extrapolated_features(self, f: ConditionFeatures) -> tuple[str, ...]:
         """Names of calibration-bounded features that required clipping."""
         return self._matrix(f)[1]
 
     def quantile_matrix(self, f: ConditionFeatures) -> np.ndarray:
-        x, _ = self._matrix(f)
+        x, _, outside_rows = self._matrix(f)
         raw = np.column_stack([self.models[q].predict(x) for q in QUANTILES])
-        return sort_and_clip(raw)
+        quantiles = sort_and_clip(raw)
+        # No empirical extrapolation calibration is available in this core package.
+        # Preserve the clipped-model median, but use the full physically possible loss
+        # support for the outer quantiles on OOD rows instead of a falsely narrow band.
+        quantiles[outside_rows, : _IDX[0.25]] = 0.0
+        quantiles[outside_rows, _IDX[0.90] :] = 1.0
+        return quantiles
 
     def sample_loss(self, f: ConditionFeatures, u) -> np.ndarray:
         return interp_quantiles(self.quantile_matrix(f), _LEVELS, u)
@@ -97,10 +144,12 @@ class LightGbmLossModel:
     ) -> LossDistribution:
         # Only the three models needed for P10/P50/P90 are evaluated (the 5% and 95% models
         # cost about as much as the other five together); sorting enforces P10 <= P50 <= P90.
-        x, extrapolated = self._matrix(f)
+        x, extrapolated, outside_rows = self._matrix(f)
         q = sort_and_clip(
             np.column_stack([self.models[lv].predict(x) for lv in (0.10, 0.50, 0.90)])
         )
+        q[outside_rows, 0] = 0.0
+        q[outside_rows, 2] = 1.0
         p10, p50, p90 = q[:, 0], q[:, 1], q[:, 2]
         if n_rows(f) == 1:
             distribution = LossDistribution(
@@ -131,13 +180,57 @@ class LightGbmLossModel:
             extrapolated_features=extrapolated,
         )
 
+    def remaining_shelf_life_p50_h(self, f: ConditionFeatures) -> float | None:
+        """Estimate time to the configured loss threshold inside model calibration support.
+
+        The estimate holds current product temperature, maturity, packaging and storage
+        conditions constant, removes planned transit time, and finds the first monotone
+        P50 threshold crossing before the calibrated age limit. It returns ``None`` when
+        the current features are extrapolated, the model's P50 is non-monotone in age, or
+        no crossing is supported by the artifact; it never extrapolates shelf life.
+        """
+        if n_rows(f) != 1:
+            raise ValueError("remaining_shelf_life_p50_h requires one feature row")
+        current_age = float(np.asarray(f.age_h))
+        age_bounds = self.calibration_ranges.get("age_h")
+        if age_bounds is None or current_age > age_bounds["max"]:
+            return None
+        baseline = with_changes(
+            f, self.params, remaining_transit_h=0.0, delay_h=0.0
+        )
+        if self.extrapolated_features(baseline):
+            return None
+        threshold = self.params.shelf_life_loss_threshold
+        current_p50 = float(self.predict(baseline).p50)
+        if current_p50 >= threshold:
+            return 0.0
+        max_age = age_bounds["max"]
+        if max_age <= current_age:
+            return None
+        ages = np.linspace(current_age, max_age, num=257, dtype=float)
+        aged = with_changes(baseline, self.params, age_h=ages)
+        p50 = np.asarray(self.predict(aged).p50, dtype=float)
+        if not np.isfinite(p50).all() or np.any(np.diff(p50) < -1e-8):
+            return None
+        crossings = np.flatnonzero(p50 >= threshold)
+        if crossings.size == 0:
+            return None
+        index = int(crossings[0])
+        if index == 0:
+            return 0.0
+        low_age, high_age = ages[index - 1], ages[index]
+        low_loss, high_loss = p50[index - 1], p50[index]
+        fraction = (threshold - low_loss) / max(high_loss - low_loss, 1e-12)
+        crossing_age = low_age + fraction * (high_age - low_age)
+        return float(max(0.0, crossing_age - current_age))
+
     def shap_contributions(self, f: ConditionFeatures) -> np.ndarray:
         """Exact TreeSHAP values of the P50 model, shape (n_rows, n_features + 1).
 
         Last column is the bias.  Built into LightGBM (pred_contrib), no extra dependency.
         Raw per-feature values; user-facing factors come from factors.explain().
         """
-        x, _ = self._matrix(f)
+        x, _, _ = self._matrix(f)
         return np.asarray(self.models[0.50].predict(x, pred_contrib=True))
 
     @classmethod

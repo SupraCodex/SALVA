@@ -82,14 +82,31 @@ def recommend(
     best = ranked[0]
     best_score = scores[0]
     best_probability = probabilities.get(best.id, 0.0)
+    reference_value = chosen_policy.reference_value_fcfa
+    if reference_value is None:
+        references = [
+            float(row.lot_reference_value_fcfa)
+            for row in eligible
+            if row.lot_reference_value_fcfa is not None
+        ]
+        if any(not np.isfinite(value) or value <= 0 for value in references):
+            raise ValueError("lot reference values must be finite and > 0")
+        if references and not all(
+            np.isclose(value, references[0], rtol=1e-9, atol=1e-6)
+            for value in references[1:]
+        ):
+            raise ValueError(
+                "eligible scenarios have inconsistent lot reference values"
+            )
+        if references:
+            reference_value = references[0]
     if len(scores) == 1:
         gap = None
     else:
-        denominator = max(
-            1.0,
-            abs(best_score),
-            abs(scores[1]),
-            float(chosen_policy.reference_value_fcfa or 0.0),
+        denominator = (
+            reference_value
+            if reference_value is not None
+            else max(1.0, abs(best_score), abs(scores[1]))
         )
         gap = max(0.0, (best_score - scores[1]) / denominator)
 
@@ -102,7 +119,10 @@ def recommend(
     if unclear:
         return Recommendation(
             best_id=None,
-            confidence="none",
+            # A no-clear-winner decision is still a recommendation outcome: RM-6
+            # requires an explicit confidence level, and the low probability/gap
+            # that triggers this branch is precisely low confidence.
+            confidence="low",
             rationale_codes=("NO_CLEAR_WINNER",),
             ranked_ids=tuple(row.id for row in ranked[:2]),
             scores_fcfa=tuple((row.id, value) for row, value in scored),

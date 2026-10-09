@@ -58,11 +58,27 @@ def validate_option(lot: Lot, option: Option) -> None:
     capacity = _finite_nonnegative(option.kg, f"option {option.id}.kg")
     if capacity <= 0:
         raise EconomicsError(f"option {option.id}.kg must be > 0")
-    if not isfinite(float(option.market.price)) or option.market.price <= 0:
-        raise EconomicsError(f"option {option.id}: market.price must be finite and > 0")
-    if not isfinite(float(option.market.absorb_kg)) or option.market.absorb_kg < 0:
+    try:
+        market_price = float(option.market.price)
+        market_absorption = float(option.market.absorb_kg)
+    except (TypeError, ValueError, OverflowError) as exc:
         raise EconomicsError(
-            f"option {option.id}: market.absorb_kg must be finite and >= 0"
+            f"option {option.id}: market price and absorb_kg must be supplied as numbers"
+        ) from exc
+    if (
+        isinstance(option.market.price, bool)
+        or not isfinite(market_price)
+        or market_price <= 0
+    ):
+        raise EconomicsError(f"option {option.id}: market.price must be finite and > 0")
+    if (
+        isinstance(option.market.absorb_kg, bool)
+        or not isfinite(market_absorption)
+        or market_absorption < 0
+    ):
+        raise EconomicsError(
+            f"option {option.id}: market.absorb_kg must be finite and >= 0; "
+            "resolve missing market defaults in the caller"
         )
     if not isfinite(float(option.cost)) or option.cost < 0:
         raise EconomicsError(f"option {option.id}.cost must be finite and >= 0 FCFA/kg")
@@ -139,12 +155,15 @@ def option_draws(
     shelf_life = None
     estimate_shelf_life = getattr(model, "remaining_shelf_life_p50_h", None)
     if estimate_shelf_life is not None:
-        estimate = np.asarray(estimate_shelf_life(baseline), dtype=float)
-        if estimate.size != 1 or not np.isfinite(estimate).all():
-            raise EconomicsError(
-                "LossModel.remaining_shelf_life_p50_h must return one finite scalar"
-            )
-        shelf_life = float(estimate.flat[0])
+        estimate_value = estimate_shelf_life(baseline)
+        if estimate_value is not None:
+            estimate = np.asarray(estimate_value, dtype=float)
+            if estimate.size != 1 or not np.isfinite(estimate).all() or estimate < 0:
+                raise EconomicsError(
+                    "LossModel.remaining_shelf_life_p50_h must return one finite "
+                    "non-negative scalar or None"
+                )
+            shelf_life = float(estimate.flat[0])
     return OptionDraws(
         loss=loss,
         value_fraction=1.0 - loss,

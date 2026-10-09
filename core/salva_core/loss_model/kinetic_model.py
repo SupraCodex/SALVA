@@ -7,7 +7,7 @@ from scipy.special import ndtri
 
 from .. import kinetics
 from ..contracts import ConditionFeatures, LossDistribution
-from ..features import n_rows
+from ..features import n_rows, out_of_range_features, out_of_range_mask
 from ..params import ProductParams
 
 _U_EPS = 1e-9
@@ -39,6 +39,29 @@ class KineticLossModel:
 
     def sample_loss(self, f: ConditionFeatures, u) -> np.ndarray:
         """Return loss fractions for the supplied conditions and uniform draws."""
+        loss = self._raw_sample_loss(f, u)
+        outside = out_of_range_mask(f, self.params)
+        if not np.any(outside):
+            return loss
+
+        scalar = loss.ndim == 0
+        values = loss.reshape(1) if scalar else loss
+        uniforms = np.broadcast_to(np.asarray(u, dtype=float), values.shape)
+        median_loss = self._raw_sample_loss(f, 0.5)
+        medians = (
+            np.full(values.shape, float(median_loss))
+            if median_loss.ndim == 0
+            else np.broadcast_to(median_loss, values.shape)
+        )
+        outside = np.broadcast_to(outside, values.shape)
+        lower = medians * np.clip((uniforms - 0.1) / 0.4, 0.0, 1.0)
+        upper = medians + (1.0 - medians) * np.clip((uniforms - 0.5) / 0.4, 0.0, 1.0)
+        widened = np.where(uniforms <= 0.5, lower, upper)
+        result = np.where(outside, widened, values)
+        return result.reshape(()) if scalar else result
+
+    def _raw_sample_loss(self, f: ConditionFeatures, u) -> np.ndarray:
+        """Evaluate the unexpanded kinetic quantile function."""
         _, loss = kinetics.quality_and_loss(f, self.lot_multiplier(u), self.params)
         return np.asarray(loss)
 
@@ -57,7 +80,13 @@ class KineticLossModel:
             from .factors import explain
 
             factors = explain(self, f, self.params)
-        return LossDistribution(p10=p10, p50=p50, p90=p90, top_factors=factors)
+        return LossDistribution(
+            p10=p10,
+            p50=p50,
+            p90=p90,
+            top_factors=factors,
+            extrapolated_features=out_of_range_features(f, self.params),
+        )
 
     def remaining_shelf_life_p50_h(self, f: ConditionFeatures) -> np.ndarray:
         """Estimate hours until the configured P50 commercial-loss threshold.

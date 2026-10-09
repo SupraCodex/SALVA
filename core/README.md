@@ -45,21 +45,28 @@ convenience API that creates the shocks and calls the same adapter.
    the shared draws and reported with P10/P50/P90.
 5. **Decision:** the policy score is `net P50 - lam * (net P50 - net P10)`. When the score
    gap is below materiality and the Monte Carlo best probability is low, the engine returns
-   `best_id=None` rather than inventing a winner. Reason codes are deterministic; prose is
-   left to the application layer. `HIGH_TEMP` uses the nominal effective mean product
+   `best_id=None` rather than inventing a winner. By default, the materiality gap is measured
+   against the nominal lot reference attached to the results (`lot.kg * highest candidate
+   market price`); `Policy.reference_value_fcfa` can override it. Reason codes are
+   deterministic; prose is left to the application layer. `HIGH_TEMP` uses the nominal effective mean product
    temperature (air + packaging + storage offset), strictly above 30 °C, not one random draw.
 6. **Risk and shelf life:** feasible results expose a product-configured risk level derived
-   from loss P50 and P10-P90 width. Models implementing the optional
-   `remaining_shelf_life_p50_h` contract can mark a route `discouraged` when nominal transit
-   exceeds that estimate; discouraged routes are excluded from best-action probabilities and
-   optimized allocation. The kinetic implementation labels its threshold as an assumption,
-   not a validated expiry guarantee.
+   from loss P50 and P10-P90 width. The kinetic model and LightGBM adapter implement the
+   optional `remaining_shelf_life_p50_h` contract; a LightGBM estimate is withheld if its
+   current features are extrapolated, age response is non-monotone, or no threshold crossing
+   lies within calibrated age support. Supported estimates can mark a route `discouraged`
+   when nominal transit exceeds remaining shelf life; discouraged routes are excluded from
+   best-action probabilities and optimized allocation. These thresholds are assumptions,
+   not validated expiry guarantees.
 7. **Sensitivity:** `analyze_sensitivity` evaluates a temperature/delay grid through the
    same `run_all` and recommendation code, with one common shock bundle for every cell, and
    reports only actual action boundaries.
-8. **Extrapolation:** configured calibration ranges are checked against effective features.
-   The kinetic reference keeps physical inputs and reports out-of-range features; LightGBM
-   clips at inference and reports the same warnings in predictions and scenario JSON.
+8. **Extrapolation:** physical input bounds and model calibration support are separate.
+   The kinetic reference keeps physical inputs; LightGBM clips to artifact calibration
+   ranges (or the explicitly labelled synthetic planning envelope). Both preserve P50 and
+   widen outer quantiles to the full physical loss support `[0, 1]` on extrapolated rows.
+   This is intentionally conservative, not an empirically calibrated interval-expansion
+   formula.
 9. **Recommendation assumptions:** recommendations expose stable assumption codes for the
    model estimate, product calibration and market-absorption hypothesis.
 
@@ -68,8 +75,11 @@ convenience API that creates the shocks and calls the same adapter.
 The original `Option` positional fields are unchanged; two optional fields were appended:
 
 - `storage_site_id`: identifies options that consume the same physical storage pool.
-- `storage_capacity_kg`: total physical capacity of that pool. If omitted, the route's
-  `Option.kg` is used as its site's capacity.
+- `storage_capacity_kg`: free physical capacity available to this simulation after occupied
+  or reserved stock. If omitted, the route's `Option.kg` is treated as the available capacity
+  of its distinct site. Core has no storage-inventory ledger, so the backend must subtract
+  occupied/reserved stock before passing this value; if free capacity is unknown, do not offer
+  a storage option.
 
 The previously unspecified `Option.cost` unit is now explicit: **FCFA per physical kg**.
 These are additive/backward-compatible shape clarifications on the `feat/spectre-core`
@@ -82,6 +92,9 @@ The `Shocks` contract currently supplies one `price` and one `absorb` vector, sh
 routes and markets within each draw. This correctly pairs alternatives for common-random-
 number comparisons, but it does **not** model independent market-specific prices or demand;
 that requires a versioned P3 contract extension, not an implicit shape change here.
+`Market.absorb_kg` is mandatory. Core contains no market master data and deliberately does not
+invent a default when it is absent: P2/backend or the reference-data owner must supply a
+preloaded, modifiable per-market value and surface its assumption provenance.
 
 ## Boundaries and unresolved integration points
 

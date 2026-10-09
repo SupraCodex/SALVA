@@ -79,6 +79,16 @@ def test_run_all_rejects_fewer_than_one_thousand_draws():
         run_all(MonotoneLossModel(), lot, options, short, p)
 
 
+def test_missing_market_absorption_requires_upstream_default_resolution():
+    p, lot, options = inputs()
+    options[0] = replace(
+        options[0],
+        market=Market(1, "Local", 100.0, None),  # type: ignore[arg-type]
+    )
+    with pytest.raises(ValueError, match="market price and absorb_kg must be supplied"):
+        run_all(MonotoneLossModel(), lot, options, draw(1_000, 19), p)
+
+
 def test_real_kinetic_model_runs_two_thousand_draws_end_to_end():
     p, lot, options = inputs()
     results = SimulationEngine(KineticLossModel(p), p).run(
@@ -123,9 +133,39 @@ def test_materially_tied_routes_return_no_clear_winner():
     rec = recommend(results)
     assert rec.best_id is None
     assert rec.no_clear_winner
-    assert rec.confidence == "none"
+    assert rec.confidence == "low"
     assert "NO_CLEAR_WINNER" in rec.rationale_codes
     assert rec.ranked_ids == ("a", "b")
+
+
+def test_default_materiality_uses_nominal_lot_value_not_net_score():
+    p = load_product("tomato")
+    lot = Lot(10.0, "breaker", "crate", 24.0, 4.0, 25.0)
+    market = Market(1, "Same market", 100.0, 100.0)
+    options = [
+        Option(option_id, "continue", 10.0, market) for option_id in ("a", "b", "c")
+    ]
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1_000, 13), p, include_allocation=False
+    )
+    assert all(r.lot_reference_value_fcfa == pytest.approx(1_000.0) for r in results)
+    # A four-FCFA score gap is 0.4% of the nominal 1,000 FCFA lot value, but 4% of
+    # the leading 100-FCFA net score. The specified 3% lot-value threshold must win.
+    results = [
+        replace(
+            row,
+            net_p10=score - 1.0,
+            net_p50=score,
+            net_p90=score + 1.0,
+            prob_best=1.0 / 3.0,
+        )
+        for row, score in zip(results, (100.0, 96.0, 92.0), strict=True)
+    ]
+    rec = recommend(results)
+    assert rec.no_clear_winner
+    assert rec.best_id is None
+    assert rec.confidence == "low"
+    assert rec.gap_fraction == pytest.approx(0.004)
 
 
 def test_best_action_is_risk_adjusted_and_rationales_are_structured():

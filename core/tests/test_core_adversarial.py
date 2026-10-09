@@ -35,6 +35,19 @@ class ConstantBooster:
         return np.full(len(matrix), self.prediction)
 
 
+class AgeBooster:
+    """Monotone fake whose P50 crosses the product's shelf-life threshold at 25 h."""
+
+    def __init__(self, offset: float) -> None:
+        self.offset = offset
+
+    def predict(self, matrix: np.ndarray, pred_contrib: bool = False) -> np.ndarray:
+        if pred_contrib:
+            return np.zeros((len(matrix), matrix.shape[1] + 1))
+        age = matrix[:, features.MODEL_COLUMNS.index("age_h")]
+        return np.clip(age / 100.0 + self.offset, 0.0, 1.0)
+
+
 def test_effective_temperature_shock_can_cross_range_without_aborting(p):
     f = features.assemble(
         p,
@@ -46,7 +59,7 @@ def test_effective_temperature_shock_can_cross_range_without_aborting(p):
         temp_shock_c=np.array([-3.0, 0.0, 3.0]),
     )
     assert np.array_equal(f.temp_mean_c, np.array([46.5, 49.5, 52.5]))
-    assert features.out_of_range_features(f, p) == ("temp_mean_c",)
+    assert features.out_of_range_features(f, p) == ("temp_max_c", "temp_mean_c")
 
 
 def test_lightgbm_clips_extrapolative_features_and_reports_them(p):
@@ -64,7 +77,10 @@ def test_lightgbm_clips_extrapolative_features_and_reports_them(p):
     result = model.predict(f)
     assert result.extrapolated_features == (
         "age_h",
+        "degree_hours_above_ref",
+        "exposure_h",
         "remaining_transit_h",
+        "temp_max_c",
         "temp_mean_c",
     )
     assert model.extrapolated_features(f) == result.extrapolated_features
@@ -73,11 +89,83 @@ def test_lightgbm_clips_extrapolative_features_and_reports_them(p):
     matrix = checked[1]
     assert matrix is not None
     for name, expected in (
-        ("age_h", 720.0),
-        ("remaining_transit_h", 720.0),
-        ("temp_mean_c", 50.0),
+        ("age_h", 168.0),
+        ("remaining_transit_h", 144.0),
+        ("temp_mean_c", 40.5),
+        ("temp_max_c", 50.5),
+        ("degree_hours_above_ref", 6396.0),
+        ("exposure_h", 312.0),
     ):
         assert matrix[0, features.MODEL_COLUMNS.index(name)] == expected
+
+
+def test_lightgbm_extrapolation_expands_outer_quantiles_and_preserves_median(p):
+    f = features.assemble(
+        p,
+        maturity="breaker",
+        packaging="crate",
+        age_h=24.0,
+        remaining_h=4.0,
+        temp_air_c=45.0,
+    )
+    boosters = {q: ConstantBooster(q) for q in QUANTILES}
+    model = LightGbmLossModel(boosters, p, "fake-lgbm")
+    result = model.predict(f)
+    assert "temp_mean_c" in result.extrapolated_features
+    assert result.p10 == 0.0
+    assert result.p50 == pytest.approx(0.50)
+    assert result.p90 == 1.0
+    sampled = model.sample_loss(f, np.array([0.10]))
+    assert sampled[0] == 0.0
+
+
+def test_lightgbm_artifact_ranges_override_planning_envelope(p):
+    f = features.assemble(
+        p,
+        maturity="breaker",
+        packaging="crate",
+        age_h=24.0,
+        remaining_h=4.0,
+        temp_air_c=41.0,
+    )
+    boosters = {q: ConstantBooster(q) for q in QUANTILES}
+    model = LightGbmLossModel(
+        boosters,
+        p,
+        "artifact-ranged",
+        metadata={"calibration_ranges": {"temp_mean_c": {"min": 10, "max": 42}}},
+    )
+    assert model.extrapolated_features(f) == ()
+    f_outside = features.with_changes(f, p, temp_mean_c=43.0)
+    assert model.extrapolated_features(f_outside) == ("temp_mean_c",)
+
+
+def test_lightgbm_rejects_malformed_artifact_calibration_ranges(p):
+    boosters = {q: ConstantBooster(q) for q in QUANTILES}
+    with pytest.raises(ValueError, match="min <= max"):
+        LightGbmLossModel(
+            boosters,
+            p,
+            "bad-range",
+            metadata={"calibration_ranges": {"temp_mean_c": {"min": 45, "max": 10}}},
+        )
+
+
+def test_lightgbm_shelf_life_is_in_range_or_unknown(p):
+    f = features.assemble(
+        p,
+        maturity="breaker",
+        packaging="crate",
+        age_h=10.0,
+        remaining_h=8.0,
+        temp_air_c=20.0,
+    )
+    model = LightGbmLossModel(
+        {q: AgeBooster(q - 0.5) for q in QUANTILES}, p, "age-monotone"
+    )
+    assert model.remaining_shelf_life_p50_h(f) == pytest.approx(15.0, abs=0.1)
+    outside = features.with_changes(f, p, temp_mean_c=45.0)
+    assert model.remaining_shelf_life_p50_h(outside) is None
 
 
 def test_scenario_reports_stochastic_extrapolation_instead_of_failing():
@@ -89,7 +177,31 @@ def test_scenario_reports_stochastic_extrapolation_instead_of_failing():
     )[0]
     assert result.feasible
     assert "temp_mean_c" in result.extrapolation_warnings
-    assert result.as_dict()["extrapolation_warnings"] == ["temp_mean_c"]
+    assert result.as_dict()["extrapolation_warnings"] == [
+        "temp_max_c",
+        "temp_mean_c",
+    ]
+    assert 0.0 <= result.loss_p10 <= 0.05
+    assert 0.95 <= result.loss_p90 <= 1.0
+
+
+def test_kinetic_extrapolation_widens_outer_quantiles_but_preserves_p50(p):
+    f = features.assemble(
+        p,
+        maturity="breaker",
+        packaging="crate",
+        age_h=24.0,
+        remaining_h=4.0,
+        temp_air_c=45.0,
+    )
+    model = KineticLossModel(p)
+    distribution = model.predict(f)
+    assert distribution.p10 == 0.0
+    assert distribution.p90 == 1.0
+    expected_median = model._raw_sample_loss(f, 0.5)
+    assert distribution.p50 == pytest.approx(expected_median)
+    samples = model.sample_loss(f, np.array([0.1, 0.5, 0.9]))
+    assert np.allclose(samples, [0.0, expected_median, 1.0])
 
 
 def test_rm4_reason_survives_when_storage_is_also_infeasible():
@@ -166,6 +278,12 @@ def test_sensitivity_axes_are_sorted_before_boundary_detection():
         ),
         (
             lambda doc: doc["tomato"]["valid_ranges"].update(
+                temp_mean_c={"min": 40.0, "max": 10.0}
+            ),
+            "finite min <= max",
+        ),
+        (
+            lambda doc: doc["tomato"]["calibration_ranges"].update(
                 temp_mean_c={"min": 40.0, "max": 10.0}
             ),
             "finite min <= max",

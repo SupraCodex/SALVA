@@ -208,20 +208,34 @@ def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionF
 
 
 def out_of_range_features(f: ConditionFeatures, p: ProductParams) -> tuple[str, ...]:
-    """Return configured numeric features with any value outside calibration bounds.
+    """Return features outside configured model-calibration bounds.
 
     This is diagnostic only: the kinetic reference model keeps the physical values, while
     statistical models may clip them at their inference boundary. Warnings are explicit so
     callers cannot confuse extrapolation with validated model support.
     """
     outside: list[str] = []
-    for name, bounds in p.valid_ranges.items():
+    ranges = p.calibration_ranges or p.valid_ranges
+    for name, bounds in ranges.items():
         if name not in MODEL_COLUMNS:
             continue
         values = np.asarray(getattr(f, name), dtype=float)
         if np.any((values < bounds["min"]) | (values > bounds["max"])):
             outside.append(name)
     return tuple(sorted(outside))
+
+
+def out_of_range_mask(f: ConditionFeatures, p: ProductParams) -> np.ndarray:
+    """Return a flattened row mask for features outside calibration support."""
+    matrix = to_matrix(f)
+    mask = np.zeros(matrix.shape[0], dtype=bool)
+    ranges = p.calibration_ranges or p.valid_ranges
+    for name, bounds in ranges.items():
+        if name not in MODEL_COLUMNS:
+            continue
+        values = matrix[:, MODEL_COLUMNS.index(name)]
+        mask |= (values < bounds["min"]) | (values > bounds["max"])
+    return mask
 
 
 def with_changes(

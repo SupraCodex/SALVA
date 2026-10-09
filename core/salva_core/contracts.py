@@ -21,7 +21,7 @@ class Market:
     id: int
     name: str
     price: float  # FCFA / kg
-    absorb_kg: float  # kg that the market absorbs at full price over the sale window
+    absorb_kg: float  # full-price kg over the sale window; caller resolves defaults
 
 
 @dataclass(frozen=True)
@@ -57,7 +57,9 @@ class Option:
     storage_site_id: str | None = (
         None  # options sharing a site consume one capacity pool
     )
-    storage_capacity_kg: float | None = None  # total physical capacity of that site
+    storage_capacity_kg: float | None = (
+        None  # free physical capacity available to this run
+    )
 
 
 @dataclass(frozen=True)
@@ -111,9 +113,9 @@ class LossDistribution:
 class LossModel(Protocol):
     """What the simulation needs from any loss model (kinetic or LightGBM).
 
-    Models may additionally expose ``remaining_shelf_life_p50_h(features)``.  This
-    optional capability is intentionally discovered at runtime so existing ML adapters
-    remain valid while RM-4 can use a validated shelf-life implementation.
+    Models may additionally expose ``remaining_shelf_life_p50_h(features)``. This optional
+    capability is intentionally discovered at runtime; it returns remaining hours or None
+    when a calibrated P50 threshold crossing cannot be supported, rather than extrapolating.
     """
 
     version: str

@@ -27,4 +27,26 @@ jobs:
       - name: Check types
         run: mypy core/salva_core --ignore-missing-imports
       - name: Run tests
-        run: python -m pytest core/tests -q --cov=salva_core --cov-report=term-missing --cov-fail-under=70
+        run: python -m pytest core/tests -q --cov=salva_core --cov-report=term-missing --cov-report=json:/tmp/core-coverage-current.json --cov-fail-under=70
+      - name: Compare coverage to pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
+          if git cat-file -e "origin/$BASE_REF:core/pyproject.toml" 2>/dev/null; then
+            mkdir -p /tmp/salva-core-base
+            git archive "origin/$BASE_REF" | tar -x -C /tmp/salva-core-base
+            python -m venv /tmp/salva-core-base-venv
+            /tmp/salva-core-base-venv/bin/python -m pip install -e "/tmp/salva-core-base/core[dev]"
+            (
+              cd /tmp/salva-core-base
+              /tmp/salva-core-base-venv/bin/python -m pytest core/tests -q \
+                --cov=salva_core --cov-report=json:/tmp/core-coverage-base.json \
+                --cov-fail-under=70
+            )
+            python core/scripts/check_coverage_regression.py \
+              /tmp/core-coverage-current.json /tmp/core-coverage-base.json
+          else
+            echo "Base branch has no core package yet; the 70% coverage gate establishes its initial baseline."
+          fi
