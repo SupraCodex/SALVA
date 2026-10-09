@@ -310,7 +310,11 @@ def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionF
         transit_factor=shocks.transit,
         extra_h=detour_h,
         hold_h=hold_h,
-        temp_offset_c=opt.temp_offset,
+        temp_offset_c=(
+            p.storage_offset(opt.storage_mode)
+            if opt.temp_offset is None
+            else opt.temp_offset
+        ),
         storage_mode=opt.storage_mode,
         product=lot.product,
     )

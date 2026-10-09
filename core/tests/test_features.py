@@ -89,6 +89,43 @@ def test_storage_offset_does_not_change_historical_or_transit_phase(p):
     )
 
 
+def test_option_uses_product_storage_mode_offset_unless_explicitly_overridden(p):
+    lot = Lot(10.0, "breaker", "crate", 0.0, 0.0, 20.0)
+    market = Market(1, "Market", 100.0, 100.0)
+    implicit = Option(
+        "implicit",
+        "store",
+        10.0,
+        market,
+        is_store=True,
+        storage_mode="cold_room",
+        hold_h=24.0,
+    )
+    explicit = Option(
+        "explicit",
+        "store",
+        10.0,
+        market,
+        is_store=True,
+        storage_mode="cold_room",
+        hold_h=24.0,
+        temp_offset=0.0,
+    )
+    shocks = Shocks(
+        temp=np.zeros(100),
+        transit=np.ones(100),
+        price=np.ones(100),
+        absorb=np.ones(100),
+        u=np.full(100, 0.5),
+    )
+
+    implicit_features = F.build(lot, implicit, shocks, p)
+    explicit_features = F.build(lot, explicit, shocks, p)
+
+    assert implicit_features.storage_temp_mean_c == pytest.approx(8.0)
+    assert explicit_features.storage_temp_mean_c == pytest.approx(20.0)
+
+
 def test_zero_hold_has_no_storage_temperature_or_category_effect(p):
     f = base(
         p,

@@ -105,7 +105,7 @@ def validate_option(lot: Lot, option: Option) -> None:
             raise EconomicsError(
                 f"option {option.id}.storage_cost_fcfa_kg_day requires hold_h > 0"
             )
-    if not isfinite(float(option.temp_offset)):
+    if option.temp_offset is not None and not isfinite(float(option.temp_offset)):
         raise EconomicsError(f"option {option.id}.temp_offset must be finite")
     if option.action == "store" and not option.is_store:
         raise EconomicsError(
@@ -155,7 +155,11 @@ def option_draws(
         diurnal_amp_c=lot.diurnal_amp_c,
         extra_h=detour_h,
         hold_h=hold_h,
-        temp_offset_c=option.temp_offset,
+        temp_offset_c=(
+            params.storage_offset(option.storage_mode)
+            if option.temp_offset is None
+            else option.temp_offset
+        ),
         storage_mode=option.storage_mode,
         product=lot.product,
     )

@@ -50,7 +50,9 @@ class Option:
     kg: float  # maximum physical kg this route can handle
     market: Market
     extra_h: float = 0.0  # extra transit/detour hours; legacy store values mean hold_h
-    temp_offset: float = 0.0  # degC; applied only during storage hold
+    temp_offset: float | None = (
+        None  # degC override; None uses the product mode default
+    )
     cost: float = 0.0  # variable cost, FCFA per physical kg
     is_store: bool = False
     storage_mode: str = "none"

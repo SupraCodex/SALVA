@@ -141,6 +141,23 @@ def test_rm4_counts_storage_hold_separately_from_transit():
     assert result.as_dict()["hold_h"] == 3.0
 
 
+def test_storage_mode_default_offset_reaches_shelf_life_model():
+    p = load_product("tomato")
+    lot = Lot(10.0, "breaker", "crate", 0.0, 8.0, 25.0)
+    option = Option(
+        "cold-store",
+        "store",
+        10.0,
+        Market(1, "Local", 100.0, 100.0),
+        is_store=True,
+        storage_mode="cold_room",
+        hold_h=3.0,
+    )
+    result = run_all(FixedShelfLifeModel(), lot, [option], draw(1_000, 39), p)[0]
+
+    assert result.temp_mean_c == pytest.approx((25.0 * 8.0 + 13.0 * 3.0) / 11.0)
+
+
 def test_high_temp_reason_uses_nominal_mean_and_strict_threshold():
     p = load_product("tomato")
     # Air at 30 C plus crate offset 0 C; diurnal maximum does not redefine T in HIGH_TEMP.
