@@ -1,0 +1,213 @@
+{
+  "data_type": "SYNTHETIC",
+  "dataset_hash": "ebf4e57a9281f5d061d5510e52be518746b6a85a9b15357b17ab84d8751f2d2a",
+  "dataset_id": "synth-g1.0.0-s42-ebf4e57a",
+  "go_nogo": {
+    "criteria": {
+      "coverage_p10_p90": {
+        "note": "95% CI over lots [0.739, 0.797]; kinetic reference (perfect model) = 0.769",
+        "passed": true,
+        "rule": "in [0.76, 0.84]",
+        "value": 0.7693692072347701
+      },
+      "decision_agreement": {
+        "note": "NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')",
+        "passed": false,
+        "rule": ">= 0.85",
+        "value": null
+      },
+      "latency_ms_10k_rows": {
+        "note": "",
+        "passed": true,
+        "rule": "< 300 ms",
+        "value": 198.97451699995372
+      },
+      "monotonicity_violations": {
+        "note": "",
+        "passed": true,
+        "rule": "<= 0",
+        "value": 0
+      },
+      "p50_fidelity_mae": {
+        "note": "",
+        "passed": true,
+        "rule": "< 0.03",
+        "value": 0.02346321196727021
+      }
+    },
+    "experimental_model": "LightGBM",
+    "production_model": "KineticModel",
+    "reasons": [
+      "decision_agreement: None (required >= 0.85) NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')"
+    ],
+    "verdict": "LIGHTGBM NO-GO"
+  },
+  "metrics": {
+    "baseline_extrapolated": {
+      "coverage_p10_p90": 0.8223833902161547,
+      "mae_p50_vs_realised": 0.060797118579246114,
+      "n_lots": 400,
+      "n_rows": 7032,
+      "pinball": {
+        "0.05": 0.008880064885004417,
+        "0.10": 0.014949268875439702,
+        "0.25": 0.02567839239150451,
+        "0.50": 0.030398559289623057,
+        "0.75": 0.02333924738980548,
+        "0.90": 0.012200729214944446,
+        "0.95": 0.00693743697050046
+      },
+      "pinball_mean": 0.017483385573831726,
+      "quantile_order_violations": 0
+    },
+    "baseline_test": {
+      "coverage_p10_p90": 0.7690992531269684,
+      "mae_p50_vs_realised": 0.0711844681276667,
+      "n_lots": 500,
+      "n_rows": 11113,
+      "pinball": {
+        "0.05": 0.008742226988412734,
+        "0.10": 0.014917202804367969,
+        "0.25": 0.027265163990394695,
+        "0.50": 0.03559223406383335,
+        "0.75": 0.029320902349267697,
+        "0.90": 0.016142312571821433,
+        "0.95": 0.009608912941181493
+      },
+      "pinball_mean": 0.020226993672754195,
+      "quantile_order_violations": 0
+    },
+    "candidate_extrapolated": {
+      "coverage_p10_p90": 0.7802901023890785,
+      "mae_p50_vs_realised": 0.07631418220662337,
+      "n_lots": 400,
+      "n_rows": 7032,
+      "pinball": {
+        "0.05": 0.01048271571979235,
+        "0.10": 0.016971939968062413,
+        "0.25": 0.0311369361815487,
+        "0.50": 0.038255735986685115,
+        "0.75": 0.03098232576112137,
+        "0.90": 0.01736845232465577,
+        "0.95": 0.008904000244466154
+      },
+      "pinball_mean": 0.022014586598047413,
+      "quantile_order_violations": 0
+    },
+    "candidate_test": {
+      "coverage_p10_p90": 0.7693692072347701,
+      "mae_p50_vs_realised": 0.07706753526504254,
+      "n_lots": 500,
+      "n_rows": 11113,
+      "pinball": {
+        "0.05": 0.009601235128213158,
+        "0.10": 0.01622660999581306,
+        "0.25": 0.030912519242611347,
+        "0.50": 0.03853555926455669,
+        "0.75": 0.031247875381754626,
+        "0.90": 0.017496071409557636,
+        "0.95": 0.010352137759520262
+      },
+      "pinball_mean": 0.022053144026003828,
+      "quantile_order_violations": 0
+    },
+    "candidate_val": {
+      "coverage_p10_p90": 0.7824617573817146,
+      "mae_p50_vs_realised": 0.07320429660024451,
+      "n_lots": 499,
+      "n_rows": 11244,
+      "pinball": {
+        "0.05": 0.00938313426310413,
+        "0.10": 0.01610540949679879,
+        "0.25": 0.03033675901522406,
+        "0.50": 0.03660446630075234,
+        "0.75": 0.0288488243048602,
+        "0.90": 0.01621328136991581,
+        "0.95": 0.009365880853591461
+      },
+      "pinball_mean": 0.020979679372035258,
+      "quantile_order_violations": 0
+    },
+    "coverage_ci_test": {
+      "ci95_high": 0.7967134024661973,
+      "ci95_low": 0.7386493464917723,
+      "coverage": 0.7693692072347701,
+      "n_lots": 500
+    },
+    "decision_agreement": {
+      "reason": "P1 engines not available yet (No module named 'salva_core.recommendation')",
+      "status": "NOT_EVALUATED"
+    },
+    "evaluator_version": "1.0.0",
+    "fidelity_extrapolated": {
+      "mae_p10": 0.039705288166946726,
+      "mae_p50": 0.03830546642561196,
+      "mae_p90": 0.035119030479730765,
+      "max_abs_p50": 0.2526623192351335
+    },
+    "fidelity_test": {
+      "mae_p10": 0.025578175625608175,
+      "mae_p50": 0.02346321196727021,
+      "mae_p90": 0.02164599831061751,
+      "max_abs_p50": 0.1769150472681411
+    },
+    "latency": {
+      "max_ms": 230.31246199997213,
+      "median_ms": 198.97451699995372,
+      "n_rows": 10000
+    },
+    "latency_baseline": {
+      "max_ms": 7.824131000006673,
+      "median_ms": 7.589652999968166,
+      "n_rows": 10000
+    },
+    "monotonicity": {
+      "by_perturbation": {
+        "diurnal_amplitude": 0,
+        "exposure_age": 0,
+        "maturity": 0,
+        "temperature": 0,
+        "transit": 0
+      },
+      "n_rows": 2000,
+      "total_violations": 0
+    },
+    "monotonicity_baseline": {
+      "by_perturbation": {
+        "diurnal_amplitude": 0,
+        "exposure_age": 0,
+        "maturity": 0,
+        "temperature": 0,
+        "transit": 0
+      },
+      "n_rows": 2000,
+      "total_violations": 0
+    },
+    "pairwise_ordering_proxy": {
+      "agreement": 0.9773650609402206,
+      "pairs_total": 2000,
+      "pairs_used": 1723
+    },
+    "shap_importance_p50": {
+      "age_h": 0.014587104117163786,
+      "degree_hours_above_ref": 0.43213957098087197,
+      "delay_h": 0.001352317976058517,
+      "exposure_h": 0.1709551022732759,
+      "maturity": 0.28554106345262764,
+      "packaging": 0.03192871320731655,
+      "remaining_transit_h": 0.00915346721959226,
+      "storage_mode": 0.0021144603425784147,
+      "temp_max_c": 0.021178092250364267,
+      "temp_mean_c": 0.031050108180150658
+    }
+  },
+  "model_version": "lgbm-1.0.0-ebf4e57a-s42",
+  "real_world_validation": "NOT PERFORMED",
+  "seed": 42,
+  "thresholds_integrity": {
+    "first_commit": "7d7523d096c222758f9d83789d6812460556b1a5 2026-10-08T06:31:38+00:00",
+    "status": "OK"
+  },
+  "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc",
+  "train_mode": "pinball_custom_monotone"
+}

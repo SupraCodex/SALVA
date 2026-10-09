@@ -1,0 +1,6 @@
+# Large, reproducible files (regenerate with `python -m ml.generate ...`)
+artifacts/datasets/
+artifacts/splits/
+artifacts/runs/
+__pycache__/
+.pytest_cache/
