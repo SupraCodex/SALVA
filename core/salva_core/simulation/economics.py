@@ -390,10 +390,18 @@ def evaluate_portfolio(
                 f"storage site {site_id} capacity exceeded: {used:g} > {capacity:g} kg"
             )
 
-    price_factor = s.price
-    absorb_factor = s.absorb
     for market_id, y in market_y.items():
         price, absorb_kg = market_meta[market_id]
+        price_factor = (
+            s.price_by_market.get(market_id, s.price)
+            if s.price_by_market is not None
+            else s.price
+        )
+        absorb_factor = (
+            s.absorb_by_market.get(market_id, s.absorb)
+            if s.absorb_by_market is not None
+            else s.absorb
+        )
         market_capacity_draws = absorb_kg * absorb_factor
         full_price_eq = np.minimum(y, market_capacity_draws)
         surplus_eq = np.maximum(y - market_capacity_draws, 0.0)

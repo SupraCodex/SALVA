@@ -63,6 +63,42 @@ def test_draw_is_seeded_bounded_and_uses_common_length():
     assert np.std(a.temp) == pytest.approx(1.5, rel=0.07)
 
 
+def test_market_shocks_are_independent_seeded_and_stable_by_market_id():
+    legacy = draw(2_000, 42)
+    first = draw(2_000, 42, market_ids=[11, 22])
+    reordered = draw(2_000, 42, market_ids=[22, 11])
+
+    for name in ("temp", "transit", "price", "absorb", "u"):
+        assert np.array_equal(getattr(legacy, name), getattr(first, name))
+    assert first.price_by_market is not None
+    assert first.absorb_by_market is not None
+    for market_id in (11, 22):
+        assert np.array_equal(
+            first.price_by_market[market_id], reordered.price_by_market[market_id]
+        )
+        assert np.array_equal(
+            first.absorb_by_market[market_id], reordered.absorb_by_market[market_id]
+        )
+    assert (
+        abs(np.corrcoef(first.price_by_market[11], first.price_by_market[22])[0, 1])
+        < 0.08
+    )
+    assert (
+        abs(np.corrcoef(first.absorb_by_market[11], first.absorb_by_market[22])[0, 1])
+        < 0.08
+    )
+
+
+def test_market_shock_validation_rejects_bad_market_vectors():
+    shocks = draw(100, 42, market_ids=[1])
+    with pytest.raises(ShockValidationError, match=r"shape \(100,\)"):
+        validate(replace(shocks, price_by_market={1: np.ones(99)}))
+    with pytest.raises(ShockValidationError, match="finite positive multipliers"):
+        validate(replace(shocks, absorb_by_market={1: np.zeros(100)}))
+    with pytest.raises(ShockValidationError, match="integer market ids"):
+        validate(replace(shocks, price_by_market={True: np.ones(100)}))
+
+
 @pytest.mark.parametrize("n", [0, 99, 20_001, 3.5, True])
 def test_draw_rejects_invalid_draw_count(n):
     with pytest.raises(ShockValidationError):
@@ -106,6 +142,43 @@ def test_single_route_uses_full_price_equivalent_kg_and_discounted_surplus():
     assert result.surplus_fraction_p50 == pytest.approx(0.5)
     assert result.as_dict()["net_value_fcfa"]["p50"] == pytest.approx(580.0)
     assert "net_draws" not in result.as_dict()
+
+
+def test_portfolio_uses_market_specific_price_and_absorption_draws():
+    params, lot, option, shocks = base_inputs(
+        lot_kg=10.0, cap=10.0, absorption=4.0, cost=0.0
+    )
+    second_market = replace(
+        option,
+        id="regional",
+        kg=10.0,
+        market=Market(2, "Market B", 100.0, 4.0),
+    )
+    options = [option, second_market]
+    draws = {
+        item.id: OptionDraws(np.full(100, 0.2), np.full(100, 0.8), 25.0, 30.0)
+        for item in options
+    }
+    shocks = replace(
+        shocks,
+        price_by_market={1: np.full(100, 2.0), 2: np.ones(100)},
+        absorb_by_market={1: np.full(100, 0.5), 2: np.full(100, 2.0)},
+    )
+
+    result = evaluate_portfolio(
+        lot,
+        options,
+        {"local": 5.0, "regional": 5.0},
+        draws,
+        shocks,
+        params,
+        scenario_id="two-markets",
+        action="optimized_split",
+    )
+
+    # Market 1: 4 equivalent kg at price x2, with only 2 at full price; 600 FCFA.
+    # Market 2: 4 equivalent kg at base price, all below its market-specific cap; 400 FCFA.
+    assert result.gross_value_p50 == pytest.approx(1_000.0)
 
 
 def test_candidate_below_physical_capacity_is_infeasible_not_silently_partial():

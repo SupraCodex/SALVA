@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+import salva_core.simulation.engine as engine_module
 from salva_core.contracts import Lot, Market, Option
 from salva_core.loss_model import KineticLossModel
 from salva_core.params import load_product
@@ -67,6 +68,21 @@ def test_engine_facade_uses_same_seed_and_defaults():
     a = facade.run(lot, options, n_draws=1_000, seed=11)
     b = facade.run(lot, options, n_draws=1_000, seed=11)
     assert [r.as_dict() for r in a] == [r.as_dict() for r in b]
+
+
+def test_engine_facade_requests_market_specific_shocks(monkeypatch):
+    p, lot, options = inputs()
+    requested: list[set[int]] = []
+    real_draw = engine_module.draw
+
+    def capture_draw(n, seed, *, market_ids=()):
+        requested.append(set(market_ids))
+        return real_draw(n, seed, market_ids=market_ids)
+
+    monkeypatch.setattr(engine_module, "draw", capture_draw)
+    SimulationEngine(MonotoneLossModel(), p).run(lot, options, n_draws=100, seed=11)
+
+    assert requested == [{1, 2}]
 
 
 def test_engine_facade_accepts_minimum_one_hundred_draws():

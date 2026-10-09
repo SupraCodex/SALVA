@@ -8,6 +8,7 @@ appear together must broadcast.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -72,13 +73,15 @@ class Option:
 
 @dataclass(frozen=True)
 class Shocks:
-    """Random draws shared by ALL actions (common random numbers). Built by P1."""
+    """Common action draws plus optional market-specific economic random factors."""
 
     temp: np.ndarray  # additive temperature shock, degC
     transit: np.ndarray  # multiplicative factor on remaining+extra hours (lognormal)
     price: np.ndarray  # multiplicative price factor
     absorb: np.ndarray  # multiplicative absorption factor
     u: np.ndarray  # uniform(0,1) draws driving lot variability in the loss model
+    price_by_market: Mapping[int, np.ndarray] | None = None
+    absorb_by_market: Mapping[int, np.ndarray] | None = None
 
 
 @dataclass(frozen=True)

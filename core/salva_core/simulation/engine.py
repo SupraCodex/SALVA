@@ -216,7 +216,9 @@ class SimulationEngine:
         store_cap: float | None = None,
     ) -> list[ScenarioResult]:
         """Run a seeded simulation and return route and optional split results."""
-        shocks = draw(n_draws, seed)
+        shocks = draw(
+            n_draws, seed, market_ids={option.market.id for option in options}
+        )
         return run_all(
             self.model,
             lot,
