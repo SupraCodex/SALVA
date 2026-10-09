@@ -155,11 +155,22 @@ def test_chilling_penalty_is_applied_once_to_lightgbm_distribution(p):
 
 
 def test_lightgbm_loader_rejects_artifact_without_chilling_declaration(
-    tmp_path: Path, p
+    tmp_path: Path, p, monkeypatch
 ):
     (tmp_path / "metadata.json").write_text(
         json.dumps({"feature_schema_hash": features.schema_hash()}), encoding="utf-8"
     )
+
+    import builtins
+
+    original_import = builtins.__import__
+
+    def import_without_joblib(name, *args, **kwargs):
+        if name == "joblib":
+            raise ModuleNotFoundError("joblib intentionally unavailable")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_joblib)
     with pytest.raises(ValueError, match="loss_includes_chilling_penalty"):
         LightGbmLossModel.load(tmp_path, p)
 

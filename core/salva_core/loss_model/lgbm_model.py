@@ -243,8 +243,6 @@ class LightGbmLossModel:
     def load(
         cls, path: str | Path, params: ProductParams | None = None
     ) -> LightGbmLossModel:
-        import joblib
-
         folder = Path(path)
         meta = json.loads((folder / "metadata.json").read_text())
         if not isinstance(meta.get("loss_includes_chilling_penalty"), bool):
@@ -265,6 +263,10 @@ class LightGbmLossModel:
                 f"Model product {meta.get('product', 'tomato')!r} does not match "
                 f"requested product {params.name!r}"
             )
+        # Validate the artifact's declared contract before loading the optional
+        # serialization dependency or deserializing model bytes.
+        import joblib
+
         models = joblib.load(folder / "models.joblib")
         return cls(
             models,

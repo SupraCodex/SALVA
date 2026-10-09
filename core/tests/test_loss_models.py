@@ -137,6 +137,7 @@ def test_chilling_is_a_separate_explainable_loss_factor(p, model):
         maturity="green",
         age_h=336.0,
         remaining_h=0.0,
+        delay_h=0.0,
         temp_air_c=2.5,
     )
     warm = feats(
@@ -144,6 +145,7 @@ def test_chilling_is_a_separate_explainable_loss_factor(p, model):
         maturity="green",
         age_h=336.0,
         remaining_h=0.0,
+        delay_h=0.0,
         temp_air_c=20.0,
     )
     cold_contribution = contributions(model, cold, p)["chilling"]

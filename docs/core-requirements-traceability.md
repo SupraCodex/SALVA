@@ -53,3 +53,13 @@ Le premier lancement de la suite dans le sandbox, après installation de `core[d
 2. `LightGbmLossModel.load` importe `joblib` avant d’examiner les métadonnées. La CI standard installe `core[dev]`, pas `core[lgbm]`; le test d’un metadata invalide échoue donc en `ModuleNotFoundError` avant de vérifier le contrat. La validation du fichier metadata/schéma doit précéder l’import et le chargement facultatifs.
 
 Cette matrice est une preuve d’audit du **périmètre core** et non une déclaration que l’application, la validation scientifique sur terrain ou le hackathon sont terminés.
+
+
+## Vérification après corrections (10 octobre 2026)
+
+- `python3 -m pytest core/tests -q --cov=salva_core --cov-report=term-missing --cov-fail-under=70` : **133 passed**, couverture totale **87,85 %** (exigence ≥70 % satisfaite).
+- Le test de rejet de metadata LightGBM bloque maintenant explicitement l’import de `joblib` pendant l’appel et confirme qu’un artifact sans déclaration `loss_includes_chilling_penalty` échoue pour son contrat, pas faute d’extra installé.
+- Le cas froid et son témoin chaud utilisent `remaining_h=0, delay_h=0`; l’invariant métier de features est inchangé.
+- `python3 -m compileall -q core/salva_core core/tests`, `ruff format --check core`, `ruff check core` et `mypy core/salva_core --ignore-missing-imports` : tous réussis; mypy couvre 22 fichiers source.
+- Mesure indicative locale, modèle cinétique, 2 000 tirages, quatre options, allocation activée, 7 exécutions séquentielles : minimum 10,1 ms, médiane 11,5 ms, maximum 11,7 ms. Ce micro-benchmark sandbox n’est **pas** un percentile p95 représentatif du déploiement; NFR-01 reste à établir sur le jeu de démo et l’environnement de staging.
+- Les lacunes d’intégration, d’accord formel P3, de provenance/catalogue absorption, de calibration scientifique/terrain, d’UI/backend, de staging et de livrables hackathon demeurent hors de la capacité de preuve du core et restent explicitement non « terminées ».
