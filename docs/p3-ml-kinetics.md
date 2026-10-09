@@ -124,14 +124,14 @@ verdict if it was modified after its commit. All criteria are required:
 | recommended-action agreement with kinetic (P1 engines) | ≥ 0.85 — *not evaluable until P1 delivers; counts as failed* |
 | latency, 10 000 rows, median | < 300 ms (CPU) |
 
-**Current result: LIGHTGBM NO-GO** (`ml/reports/lgbm-1.0.0-ebf4e57a-s42/report.md`): the
+**Current result: LIGHTGBM NO-GO** (`ml/reports/lgbm-1.0.0-83dd816d-s42/report.md`): the
 four other criteria pass, the decision criterion is not evaluable. Production model =
 `KineticLossModel`; LightGBM = experimental. Re-run `ml.evaluate` once P1's simulation and
 recommendation engines exist; GO is then possible. Honest caveats: coverage 0.769 passes
 narrowly (95 % CI [0.739, 0.797] over 500 test lots; the kinetic reference itself scores
 0.769, i.e. sampling noise); fidelity degrades outside the training domain (extrapolation
 P50 MAE 0.038, max 0.25); latency was measured on a 1-CPU sandbox; a first evaluation
-(`reports/.../history/`) measured 659 ms before `predict()` was restricted to three models —
+(`ml/reports/<version>/history/`) measured 659 ms before `predict()` was restricted to three models —
 thresholds were not touched.
 
 ## 8. Using the loss model

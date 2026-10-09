@@ -1,8 +1,8 @@
 {
   "DATA_TYPE": "SYNTHETIC",
-  "created_at_utc": "2026-10-08T11:39:08+00:00",
-  "dataset_hash": "ebf4e57a9281f5d061d5510e52be518746b6a85a9b15357b17ab84d8751f2d2a",
-  "dataset_id": "synth-g1.0.0-s42-ebf4e57a",
+  "created_at_utc": "2026-10-09T10:03:23+00:00",
+  "dataset_hash": "83dd816d64d9ee39ae7e0783e697e7efecb85a918fd586fc6edc360dc92de9a3",
+  "dataset_id": "synth-g1.0.0-s42-83dd816d",
   "dependencies": {
     "lightgbm": "4.7.0",
     "numpy": "2.4.4",
@@ -80,7 +80,7 @@
   },
   "feature_schema_hash": "4b4e00408a2fb64cf35e1ea91029c24dbd080513a45adeb439e5924d33411093",
   "feature_version": "1.0.0",
-  "git_commit": "4ed63cbefb2db55a5270a2313710aac562a353a1",
+  "git_commit": "dbfc9c71e136a69ba716c5f00689ec7b7c378b9c",
   "go_nogo": "LIGHTGBM NO-GO",
   "go_nogo_reasons": [
     "decision_agreement: None (required >= 0.85) NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')"
@@ -126,8 +126,8 @@
       "max_abs_p50": 0.1769150472681411
     },
     "latency": {
-      "max_ms": 230.31246199997213,
-      "median_ms": 198.97451699995372,
+      "max_ms": 251.76595300001736,
+      "median_ms": 214.88407599997572,
       "n_rows": 10000
     },
     "monotonicity": {
@@ -143,7 +143,7 @@
     }
   },
   "model_type": "lightgbm-quantile",
-  "model_version": "lgbm-1.0.0-ebf4e57a-s42",
+  "model_version": "lgbm-1.0.0-83dd816d-s42",
   "product": "tomato",
   "products_yaml_sha256": "49b7c5bd4a18a64f0aa6c0de7cbb3067e969b0c286228f6b2ea102ffed16686a",
   "quantiles": [

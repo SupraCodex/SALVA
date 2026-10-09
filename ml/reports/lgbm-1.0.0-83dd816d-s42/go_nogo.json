@@ -1,5 +1,5 @@
 {
-  "dataset_id": "synth-g1.0.0-s42-ebf4e57a",
+  "dataset_id": "synth-g1.0.0-s42-83dd816d",
   "go_nogo": {
     "criteria": {
       "coverage_p10_p90": {
@@ -18,7 +18,7 @@
         "note": "",
         "passed": true,
         "rule": "< 300 ms",
-        "value": 198.97451699995372
+        "value": 214.88407599997572
       },
       "monotonicity_violations": {
         "note": "",
@@ -40,7 +40,7 @@
     ],
     "verdict": "LIGHTGBM NO-GO"
   },
-  "model_version": "lgbm-1.0.0-ebf4e57a-s42",
+  "model_version": "lgbm-1.0.0-83dd816d-s42",
   "seed": 42,
   "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc"
 }

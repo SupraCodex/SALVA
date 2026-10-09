@@ -1,3 +1,5 @@
+NOTE: first evaluation (before predict() was restricted to the P10/P50/P90 models). Produced under the previous dataset hash ebf4e57a (identical data; the hash algorithm was later made pandas-independent).
+
 Model: LightGBM (lgbm-1.0.0-ebf4e57a-s42, pinball_custom_monotone)
 Dataset version: synth-g1.0.0-s42-ebf4e57a  (hash ebf4e57a9281)
 Seed: 42

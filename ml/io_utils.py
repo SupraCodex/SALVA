@@ -7,16 +7,28 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 
 def dataframe_hash(df: pd.DataFrame) -> str:
-    """Deterministic content hash (column names, dtypes and values; not the parquet bytes)."""
+    """Deterministic content hash, independent of pandas/pyarrow versions and string dtype.
+
+    Numeric columns are hashed as raw int64/float64 bytes, other columns as UTF-8 text.
+    """
     h = hashlib.sha256()
     for col in df.columns:
-        h.update(str(col).encode())
-        h.update(str(df[col].dtype).encode())
-        h.update(pd.util.hash_pandas_object(df[col], index=False).to_numpy().tobytes())
+        s = df[col]
+        h.update(f"|{col}|".encode())
+        if pd.api.types.is_bool_dtype(s) or pd.api.types.is_integer_dtype(s):
+            h.update(b"int")
+            h.update(np.ascontiguousarray(s.to_numpy(dtype=np.int64)).tobytes())
+        elif pd.api.types.is_float_dtype(s):
+            h.update(b"float")
+            h.update(np.ascontiguousarray(s.to_numpy(dtype=np.float64)).tobytes())
+        else:
+            h.update(b"str")
+            h.update("\x1f".join(s.astype(str).tolist()).encode("utf-8"))
     return h.hexdigest()
 
 

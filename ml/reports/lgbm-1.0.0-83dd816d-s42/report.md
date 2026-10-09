@@ -1,5 +1,5 @@
-Model: LightGBM (lgbm-1.0.0-ebf4e57a-s42, pinball_custom_monotone)
-Dataset version: synth-g1.0.0-s42-ebf4e57a  (hash ebf4e57a9281)
+Model: LightGBM (lgbm-1.0.0-83dd816d-s42, pinball_custom_monotone)
+Dataset version: synth-g1.0.0-s42-83dd816d  (hash 83dd816d64d9)
 Seed: 42
 DATA TYPE: SYNTHETIC (labels from the kinetic model). Real-world validation: NOT PERFORMED.
 
@@ -9,7 +9,7 @@ P10-P90 coverage (test): 0.769  [PASS]  required in [0.76, 0.84]
 Monotonicity violations: 0  [PASS]  required <= 0
 Recommendation agreement: n/a  [FAIL]  required >= 0.85
   NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')
-Latency (10k rows, median): 199.0 ms  [PASS]  required < 300 ms
+Latency (10k rows, median): 214.9 ms  [PASS]  required < 300 ms
 
 GO/NO-GO: LIGHTGBM NO-GO
 Reason:

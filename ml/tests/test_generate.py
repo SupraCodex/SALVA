@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 from salva_core import features as F
 from salva_core.params import load_product
@@ -87,3 +88,10 @@ def test_tampering_is_detected(small_dataset, tmp_path):
 def test_invalid_sizes_rejected(cfg, params):
     with pytest.raises(ValueError):
         generate.generate_dataset(cfg, params, n_lots=0, rows_per_lot=5, seed=1)
+
+
+def test_hash_is_independent_of_string_storage_and_dtype_width():
+    a = pd.DataFrame({"x": [1.0, 2.5], "n": [1, 2], "s": ["a", "b"]})
+    b = a.astype({"s": "string", "n": "int32"})
+    assert dataframe_hash(a) == dataframe_hash(b)
+    assert dataframe_hash(a) != dataframe_hash(a.assign(x=[1.0, 2.6]))

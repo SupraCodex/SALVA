@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import argparse
 import logging
+import platform
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+import scipy
 from salva_core import features as F
 from salva_core import kinetics
 from salva_core.loss_model.kinetic_model import KineticLossModel
@@ -138,6 +140,8 @@ def build_metadata(cfg: dict[str, Any], params: ProductParams, df: pd.DataFrame,
         "hidden_columns": list(HIDDEN_COLUMNS),
         "model_columns": list(F.MODEL_COLUMNS),
         "warning": "Synthetic labels computed by the kinetic model. Not field observations.",
+        "dependencies": {"python": platform.python_version(), "numpy": np.__version__,
+                         "scipy": scipy.__version__, "pandas": pd.__version__},
         "created_at_utc": datetime.now(UTC).isoformat(timespec="seconds"),
     }
 
