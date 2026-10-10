@@ -12,6 +12,7 @@ from salva_core.simulation import (
     analyze_parameter_sensitivity,
     analyze_sensitivity,
     draw,
+    relative_hypothesis_parameter_paths,
     run_all,
 )
 
@@ -148,4 +149,82 @@ def test_parameter_sensitivity_rejects_zero_baseline_and_out_of_domain_changes()
             draw(1_000, 9, market_ids=[1]),
             ["product.q10"],
             relative_change=0.8,
+        )
+
+
+def test_hypothesis_discovery_includes_supported_numeric_assumptions_only():
+    paths = relative_hypothesis_parameter_paths(load_product("tomato"))
+
+    assert "product.t_ref_c" in paths
+    assert "product.risk_thresholds.low_p50_max" in paths
+    assert "product.grades.B.threshold" in paths
+    assert "product.chilling_threshold_c.green" not in paths
+    assert "product.pack_delta_c.crate" not in paths
+
+
+def test_all_discovered_hypotheses_run_through_common_draw_engine():
+    params = load_product("tomato")
+    model = KineticLossModel(params)
+    lot = Lot(10.0, "breaker", "crate", 0.0, 4.0, 20.0)
+    options = [Option("local", "continue", 10.0, Market(1, "local", 100.0, 100.0))]
+    paths = relative_hypothesis_parameter_paths(params)
+    result = analyze_parameter_sensitivity(
+        model,
+        lot,
+        options,
+        params,
+        draw(1_000, 20_261_010, market_ids=[1]),
+        paths,
+    )
+
+    assert len(result.points) == len(paths) == 32
+    assert all(point.baseline_risk_levels for point in result.points)
+    assert all(point.minus_risk_levels for point in result.points)
+    assert all(point.plus_risk_levels for point in result.points)
+
+
+def test_parameter_sensitivity_exposes_risk_threshold_effects():
+    params = load_product("tomato")
+    model = KineticLossModel(params)
+    lot = Lot(10.0, "breaker", "crate", 0.0, 4.0, 20.0)
+    options = [Option("local", "continue", 10.0, Market(1, "local", 100.0, 100.0))]
+    result = analyze_parameter_sensitivity(
+        model,
+        lot,
+        options,
+        params,
+        draw(1_000, 24, market_ids=[1]),
+        ["product.risk_thresholds.low_p50_max"],
+    )
+
+    point = result.points[0]
+    assert set(point.baseline_risk_levels) == {"local"}
+    assert set(point.minus_risk_levels) == {"local"}
+    assert set(point.plus_risk_levels) == {"local"}
+    assert result.as_dict()["points"][0]["risk_levels"]["baseline"] == {
+        "local": point.baseline_risk_levels["local"]
+    }
+
+
+def test_sensitivity_rejects_boolean_numbers_and_invalid_parameter_types():
+    params = load_product("tomato")
+    model = KineticLossModel(params)
+    lot = Lot(10.0, "breaker", "crate", 0.0, 4.0, 20.0)
+    options = [Option("local", "continue", 10.0, Market(1, "local", 100.0, 100.0))]
+
+    with pytest.raises(TypeError, match="not bool"):
+        analyze_parameter_sensitivity(
+            model,
+            lot,
+            options,
+            params,
+            draw(1_000, 2, market_ids=[1]),
+            ["product.k_ref"],
+            relative_change=True,
+        )
+    with pytest.raises(TypeError, match="not bool"):
+        analyze_sensitivity(model, lot, options, params, [True], [0.0])
+    with pytest.raises(TypeError, match="non-empty string"):
+        analyze_parameter_sensitivity(
+            model, lot, options, params, draw(1_000, 2, market_ids=[1]), [None]
         )

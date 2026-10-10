@@ -105,9 +105,13 @@ historical-age proxy, future transit and controlled storage hold. The historical
 the nominal air/packaging temperature because `Lot` does not contain an observed cold-chain
 history. Product parameters provide maturity-specific lower-temperature boundaries and
 onset doses. The green/breaker 10 °C boundary and the short-term 7 °C firm-ripe boundary
-follow the [UC Davis tomato postharvest guidance](https://postharvest.ucdavis.edu/produce-facts-sheets/tomato);
-the general below-10 °C chilling sensitivity and maturity dependence are also reported by
-[David et al. (2022)](https://pmc.ncbi.nlm.nih.gov/articles/PMC9493348/).
+are operational anchors drawn from the [UC Davis tomato postharvest guidance](https://postharvest.ucdavis.edu/produce-facts-sheets/tomato),
+not cultivar-specific injury thresholds calibrated by this project. [David et al. (2022)]
+(https://pmc.ncbi.nlm.nih.gov/articles/PMC9493348/) support the concern about biological
+variation: their 148-line population showed markedly different chilling tolerance after
+exposure to 1.5 °C. That paper does not validate SALVA's numerical threshold or loss dose
+curve. The evidence and its transfer limits are documented in
+[`docs/scientific_basis.md`](docs/scientific_basis.md).
 
 The equivalent-hour temperature scale is an initial dose-model assumption selected to map
 roughly seven days at 5 °C to fourteen days at 10 °C. The post-onset loss rate is **not** an
@@ -172,3 +176,20 @@ production simulation and recommendation paths for every grid cell and reports a
 action transitions; it does not fit a second surrogate model.
 Its returned axes are sorted ascending, so each transition follows increasing temperature
 or delay regardless of the caller's input order.
+
+`relative_hypothesis_parameter_paths(params, model=model)` enumerates non-zero numeric
+product parameters marked `source: assumption` whose default ±30% variants remain within
+the configured product domain and are supported by the supplied model adapter. Without
+`model`, it lists product-level candidates. It excludes literature-sourced parameters and zero baselines
+(for which a percentage change is undefined). `analyze_parameter_sensitivity` includes
+P10/P50/P90-based scenario risk levels in its output as well as the recommendation so RM-5
+changes are not hidden when risk thresholds are varied. Neither API calibrates model values
+or substitutes for independent field validation.
+
+For a product parameter that must enter the loss model, an adapter must implement both
+`supports_parameter_sensitivity(path) -> bool` and `with_params(params)`. Sensitivity is
+rejected when the adapter cannot demonstrate an inference pathway. The LightGBM adapter
+supports only parameters that alter its feature inputs, shelf-life test, or common chilling
+adjustment; varying a kinetic or grading coefficient that would require fitting new trees is
+rejected with an explicit error. Price-tier `delta` and RM-5 thresholds are applied by the
+economics/risk layers and do not require a model rebind.

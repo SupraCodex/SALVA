@@ -66,9 +66,15 @@ from 100 to 20,000, as specified by the design document.
    reports only actual action boundaries. `analyze_parameter_sensitivity` recalculates
    product, route-cost, price, and absorption variants at ±30% (or another valid relative
    change) on exactly the supplied shocks; product variants require `LossModel.with_params`.
-   The built-in kinetic and LightGBM adapters rebind product configuration; this does not
-   retrain fitted LightGBM trees. Unsupported adapters fail explicitly instead of silently
-   ignoring a product perturbation.
+   `relative_hypothesis_parameter_paths(params, model=model)` enumerates declared, non-zero
+   product assumptions whose two default perturbations remain in-domain and whose model
+   adapter declares support. Without `model`, it lists product-level candidates. Per-scenario risk levels
+   are included with each sensitivity point. Product-sensitive model adapters must declare
+   `supports_parameter_sensitivity(path)` and implement `with_params`; LightGBM rejects
+   kinetic/grading parameters that would require retraining its fixed trees. Supported
+   LightGBM feature, shelf-life and chilling parameters rebind configuration without
+   retraining. Unsupported adapters fail explicitly instead of silently ignoring a
+   perturbation.
 8. **Market uncertainty:** `draw(..., market_ids=...)` returns independent price and
    absorption vectors per market. All routes to one market share that market's factor per
    draw. Historical shock bundles without per-market maps retain shared-vector behavior.
@@ -120,6 +126,9 @@ preloaded, modifiable per-market value and surface its assumption provenance.
   routing, contracts, payment delays, quality safety decisions, non-tomato products and
   validation against field outcomes are out of scope. Product values and market capacities
   remain assumptions until calibrated.
+- The literature supports temperature-, maturity- and genotype-dependent tomato quality
+  changes, but does not calibrate SALVA's commercial-value coefficients. The evidence and
+  the remaining model limits are recorded in [`docs/scientific_basis.md`](docs/scientific_basis.md).
 - The optional market maps are additive to the original one-dimensional shock vectors.
   Legacy bundles without maps deliberately retain shared price/absorption factors.
 - Extrapolation-warning and recommendation-assumption fields are additive proposals and

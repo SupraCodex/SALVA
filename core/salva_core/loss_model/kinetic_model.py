@@ -36,6 +36,10 @@ class KineticLossModel:
         """Return the same model implementation bound to a varied parameter set."""
         return type(self)(params, version=self.version)
 
+    def supports_parameter_sensitivity(self, path: str) -> bool:
+        """The reference kinetic adapter evaluates all supported product parameters."""
+        return path.startswith("product.")
+
     def lot_multiplier(self, u):
         """Map uniform draws to the lognormal lot-level decay multiplier."""
         uu = np.clip(np.asarray(u, dtype=float), _U_EPS, 1.0 - _U_EPS)

@@ -85,6 +85,34 @@ class LightGbmLossModel:
         """
         return type(self)(self.models, params, self.version, self.metadata)
 
+    def supports_parameter_sensitivity(self, path: str) -> bool:
+        """Whether a parameter path has an actual inference/evaluation pathway.
+
+        A fitted booster cannot respond to kinetic or grading coefficients that are not
+        features and are not part of the common chilling or economic calculations. Such
+        perturbations must be rejected rather than presented as a zero-impact sensitivity.
+        """
+        if path in {"product.delta"} or path.startswith("product.risk_thresholds."):
+            return (
+                True  # applied by economics / risk classification outside the booster
+            )
+        if path in {
+            "product.t_ref_c",
+            "product.default_diurnal_amp_c",
+            "product.shelf_life_loss_threshold",
+            "product.chilling_temperature_scale_c",
+            "product.chilling_loss_rate_per_equivalent_h",
+        }:
+            return True
+        return path.startswith(
+            (
+                "product.pack_delta_c.",
+                "product.storage_temp_offset_c.",
+                "product.chilling_threshold_c.",
+                "product.chilling_onset_equivalent_h.",
+            )
+        )
+
     def _load_calibration_ranges(self) -> dict[str, dict[str, float]]:
         """Use artifact feature support, falling back to the versioned planning envelope."""
         fallback = self.params.calibration_ranges or self.params.valid_ranges

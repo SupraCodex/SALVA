@@ -9,6 +9,7 @@ from .sensitivity import (
     SensitivityTransition,
     analyze_parameter_sensitivity,
     analyze_sensitivity,
+    relative_hypothesis_parameter_paths,
 )
 from .uncertainty import draw
 
@@ -23,5 +24,6 @@ __all__ = [
     "analyze_sensitivity",
     "draw",
     "optimize",
+    "relative_hypothesis_parameter_paths",
     "run_all",
 ]

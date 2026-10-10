@@ -14,7 +14,13 @@ from salva_core.loss_model import KineticLossModel
 from salva_core.loss_model.lgbm_model import QUANTILES, LightGbmLossModel
 from salva_core.params import ParamsError, load_product, load_products
 from salva_core.recommendation import recommend
-from salva_core.simulation import SimulationEngine, analyze_sensitivity
+from salva_core.simulation import (
+    SimulationEngine,
+    analyze_parameter_sensitivity,
+    analyze_sensitivity,
+    draw,
+    relative_hypothesis_parameter_paths,
+)
 from salva_core.simulation.engine import run_all
 
 
@@ -152,6 +158,31 @@ def test_chilling_penalty_is_applied_once_to_lightgbm_distribution(p):
         metadata={"loss_includes_chilling_penalty": True},
     )
     assert already_adjusted.predict(f).p50 == pytest.approx(0.50)
+
+
+def test_lightgbm_rejects_kinetic_parameter_sensitivity_without_retraining(p):
+    model = LightGbmLossModel(
+        {q: ConstantBooster(q) for q in QUANTILES}, p, "fake-lgbm"
+    )
+    lot = Lot(10.0, "breaker", "crate", 0.0, 4.0, 20.0)
+    options = [Option("local", "continue", 10.0, Market(1, "local", 100.0, 100.0))]
+
+    assert model.supports_parameter_sensitivity("product.t_ref_c")
+    assert not model.supports_parameter_sensitivity("product.q10")
+    model_paths = relative_hypothesis_parameter_paths(p, model=model)
+    assert "product.t_ref_c" in model_paths
+    assert "product.q10" not in model_paths
+    with pytest.raises(
+        ValueError, match="does not support parameter sensitivity.*product.q10"
+    ):
+        analyze_parameter_sensitivity(
+            model,
+            lot,
+            options,
+            p,
+            draw(1_000, 5, market_ids=[1]),
+            ["product.q10"],
+        )
 
 
 def test_lightgbm_loader_rejects_artifact_without_chilling_declaration(
