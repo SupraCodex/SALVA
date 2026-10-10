@@ -14,6 +14,6 @@ def get_provider(settings: Any) -> LLMProvider:
 
         return GeminiProvider(
             api_key=getattr(settings, "llm_api_key", None) or "",
-            model=getattr(settings, "llm_model", "gemini-2.5-flash"),
+            model=getattr(settings, "llm_model", "gemini-3.5-flash"),
         )
     return TemplateProvider()

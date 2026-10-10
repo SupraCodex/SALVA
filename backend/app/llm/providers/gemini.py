@@ -13,7 +13,7 @@ _URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generate
 class GeminiProvider:
     name = "gemini"
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-3.5-flash") -> None:
         if not api_key:
             raise LLMError("missing LLM_API_KEY")
         self._api_key = api_key
