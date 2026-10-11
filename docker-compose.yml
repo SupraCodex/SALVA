@@ -1,0 +1,34 @@
+# API + PostgreSQL 16 in one command, from the backend/ folder:
+#   docker compose up --build
+# API: http://localhost:8000  -  docs: http://localhost:8000/docs
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: salva
+      POSTGRES_PASSWORD: salva
+      POSTGRES_DB: salva
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salva"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://salva:salva@db:5432/salva
+      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+      WEATHER_ENABLED: "true"
+      AUTH_ENABLED: "false"
+      JWT_SECRET: dev-only-change-me-with-a-long-random-string
+    ports: ["8000:8000"]
+    volumes:
+      - ../data/reference:/srv/data/reference:ro   # distances.csv etc. (maintained by the data owners)
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
