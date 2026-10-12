@@ -34,6 +34,7 @@ class ExplanationFacts(BaseModel):
     confidence: str | None = None  # "62 %"
     scenarios: list[ScenarioFact] = []
     assumptions: list[str] = []  # e.g. "Temperature: assumption (28 °C)"
+    reason_codes: list[str] = []  # engine reason codes (e.g. "long_delay"); never free-text notes
 
 
 class ExplanationOut(BaseModel):

@@ -89,3 +89,9 @@ def test_factory_defaults_to_template():
         llm_provider = "template"
 
     assert get_provider(S()).name == "template"
+
+
+def test_reason_codes_are_optional_and_kept():
+    assert FACTS.reason_codes == []
+    facts = FACTS.model_copy(update={"reason_codes": ["long_delay"]})
+    assert "long_delay" in facts.model_dump_json()
