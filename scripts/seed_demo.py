@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.db.models import (  # noqa: E402
+from app.db.models import (
     Base,
     Location,
     Lot,
@@ -34,7 +34,7 @@ from app.db.models import (  # noqa: E402
     Organization,
     StorageSite,
 )
-from app.db.session import SessionLocal, engine  # noqa: E402
+from app.db.session import SessionLocal, engine
 
 REF = ROOT / "data" / "reference"
 DEMO_ORG = "demo"
