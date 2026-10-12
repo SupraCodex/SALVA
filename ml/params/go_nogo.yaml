@@ -1,0 +1,61 @@
+# LightGBM go/no-go criteria for 2026-10-18.
+#
+# PRE-REGISTERED: this file was committed BEFORE any LightGBM model was trained or
+# evaluated. evaluate.py records its sha256 and refuses to call a verdict valid if the
+# working-tree file differs from the committed version. Do NOT edit thresholds after
+# looking at results; a change requires a new, explicit, team-approved commit.
+schema_version: 1
+registered_on: "2026-10-08"
+
+# All criteria are REQUIRED. GO only if every criterion passes.
+# A criterion that cannot be evaluated counts as NOT passed (verdict NO-GO).
+criteria:
+  p50_fidelity_mae:
+    description: >
+      mean |P50_lightgbm(x) - P50_kinetic(x)| over the TEST split, same features x.
+      Measures fidelity of the surrogate to the kinetic reference (loss fraction units).
+    max: 0.03
+  coverage_p10_p90:
+    description: >
+      Fraction of TEST realised losses falling inside [P10_lightgbm, P90_lightgbm].
+      Nominal value is 0.80.
+    min: 0.76
+    max: 0.84
+  monotonicity_violations:
+    description: >
+      Number of violations of P10/P50/P90 monotonicity in temperature, duration,
+      diurnal amplitude and maturity over the perturbation suite (see monotonicity:).
+    max: 0
+  decision_agreement:
+    description: >
+      Share of scenarios where the action recommended with LightGBM equals the action
+      recommended with the kinetic model, computed with the P1 simulation and
+      recommendation engines. NOT evaluable until P1 delivers them -> counts as failed.
+    min: 0.85
+  latency_ms_10k_rows:
+    description: >
+      Median wall time (ms) of LightGBM predict() of P10/P50/P90 on 10 000 rows,
+      CPU, single process.
+    max: 300
+
+# Parameters of the checks above (fixed together with the thresholds).
+monotonicity:
+  n_rows: 2000
+  perturbations:
+    temp_mean_c_plus: 2.0       # degC added to mean (max shifts with it)
+    exposure_plus_h: 12.0       # added to age_h
+    transit_plus_h: 12.0        # added to remaining_transit_h
+    diurnal_amp_plus_c: 2.0     # added to temp_max_c only
+    maturity_step: 1            # green->breaker->ripe
+  tolerance: 1.0e-9
+latency:
+  n_rows: 10000
+  repeats: 7
+decision_agreement:
+  n_scenarios: 200
+  seed: 20261018
+# Reported for transparency, NOT part of the verdict.
+reporting_only:
+  - extrapolation_split_metrics
+  - pinball_loss_per_quantile
+  - pairwise_ordering_agreement_proxy

@@ -1,0 +1,46 @@
+{
+  "dataset_id": "synth-g1.0.0-s42-83dd816d",
+  "go_nogo": {
+    "criteria": {
+      "coverage_p10_p90": {
+        "note": "95% CI over lots [0.739, 0.797]; kinetic reference (perfect model) = 0.769",
+        "passed": true,
+        "rule": "in [0.76, 0.84]",
+        "value": 0.7693692072347701
+      },
+      "decision_agreement": {
+        "note": "NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')",
+        "passed": false,
+        "rule": ">= 0.85",
+        "value": null
+      },
+      "latency_ms_10k_rows": {
+        "note": "",
+        "passed": true,
+        "rule": "< 300 ms",
+        "value": 214.88407599997572
+      },
+      "monotonicity_violations": {
+        "note": "",
+        "passed": true,
+        "rule": "<= 0",
+        "value": 0
+      },
+      "p50_fidelity_mae": {
+        "note": "",
+        "passed": true,
+        "rule": "< 0.03",
+        "value": 0.02346321196727021
+      }
+    },
+    "experimental_model": "LightGBM",
+    "production_model": "KineticModel",
+    "reasons": [
+      "decision_agreement: None (required >= 0.85) NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')"
+    ],
+    "verdict": "LIGHTGBM NO-GO"
+  },
+  "model_version": "lgbm-1.0.0-83dd816d-s42",
+  "seed": 42,
+  "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc"
+}

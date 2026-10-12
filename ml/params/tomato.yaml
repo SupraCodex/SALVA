@@ -1,0 +1,54 @@
+# ML configuration for the tomato surrogate (owner: P3).
+# Synthetic data = kinetic model + controlled variability. NEVER real observations.
+schema_version: 1
+product: tomato
+generator:
+  version: "1.0.0"
+  data_type: SYNTHETIC
+  generator_name: KINETIC_MODEL
+  seed: 42
+  n_lots: 4000            # lots (groups). Rows of one lot share lot variability u.
+  rows_per_lot: 40        # states observed per lot -> 160 000 rows
+sampling:
+  # lot level
+  maturity_probs: {green: 0.25, breaker: 0.55, ripe: 0.20}
+  packaging_probs: {crate: 0.35, carton: 0.15, sack: 0.50}
+  temp_air_c: {min: 18.0, max: 36.0}          # mean air temperature of the lot
+  diurnal_amp_c: {min: 3.0, max: 10.0}        # half amplitude of the daily cycle
+  # row level (Latin hypercube)
+  age_h: {min: 0.0, max: 144.0}
+  remaining_planned_h: {min: 0.0, max: 48.0}  # planned transit left, WITHOUT delay
+  delay_h: {p_zero: 0.60, mean: 6.0, max: 36.0}   # mixture: 60% on time, else exponential
+  temp_shock_sd_c: 1.5                        # same family as the simulation shocks
+  transit_sigma: 0.2                          # lognormal sigma of transit-duration factor
+  p_storage: 0.30
+  storage_modes: [ambient_shade, ventilated, cold_room]
+  storage_hold_h: {min: 6.0, max: 48.0}
+split:
+  seed: 42
+  # lot-level 4-way split (fractions of LOTS, must sum to 1)
+  train: 0.65
+  val: 0.125
+  test: 0.125
+  extrapolation: 0.10
+  # extrapolation region: rows with effective temperature above or age above these
+  # values are NEVER seen in train/val/test; they only live in extrapolation lots
+  extrapolation_temp_mean_c: 34.0
+  extrapolation_age_h: 96.0
+validation:
+  max_loss_mean: 0.9
+  min_loss_mean: 0.02
+  min_rows_per_category: 50
+lightgbm:
+  seed: 42
+  n_estimators: 3000
+  learning_rate: 0.05
+  num_leaves: 31
+  min_child_samples: 100
+  feature_fraction: 0.9
+  early_stopping_rounds: 200
+  # LightGBM forbids monotone_constraints with its native quantile objective, so the
+  # default trains a custom pinball objective (hessian=1) that DOES honour them.
+  # 'native_quantile' = unconstrained ablation (monotonicity then only tested, not enforced).
+  mode: pinball_custom_monotone
+  monotone_constraints_method: advanced

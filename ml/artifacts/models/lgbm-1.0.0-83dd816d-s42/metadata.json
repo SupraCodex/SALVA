@@ -1,0 +1,162 @@
+{
+  "DATA_TYPE": "SYNTHETIC",
+  "created_at_utc": "2026-10-09T10:03:23+00:00",
+  "dataset_hash": "83dd816d64d9ee39ae7e0783e697e7efecb85a918fd586fc6edc360dc92de9a3",
+  "dataset_id": "synth-g1.0.0-s42-83dd816d",
+  "dependencies": {
+    "lightgbm": "4.7.0",
+    "numpy": "2.4.4",
+    "pandas": "3.0.2",
+    "python": "3.12.3"
+  },
+  "feature_columns": [
+    "age_h",
+    "temp_mean_c",
+    "temp_max_c",
+    "degree_hours_above_ref",
+    "remaining_transit_h",
+    "delay_h",
+    "exposure_h",
+    "maturity",
+    "packaging",
+    "storage_mode"
+  ],
+  "feature_schema": {
+    "categorical": [
+      "maturity",
+      "packaging",
+      "storage_mode"
+    ],
+    "codes": {
+      "maturity": {
+        "breaker": 1,
+        "green": 0,
+        "ripe": 2
+      },
+      "packaging": {
+        "carton": 1,
+        "crate": 0,
+        "sack": 2
+      },
+      "storage_mode": {
+        "ambient_shade": 1,
+        "cold_room": 3,
+        "none": 0,
+        "ventilated": 2
+      }
+    },
+    "columns": [
+      "age_h",
+      "temp_mean_c",
+      "temp_max_c",
+      "degree_hours_above_ref",
+      "remaining_transit_h",
+      "delay_h",
+      "exposure_h",
+      "maturity",
+      "packaging",
+      "storage_mode"
+    ],
+    "monotone_increasing": [
+      "age_h",
+      "temp_mean_c",
+      "temp_max_c",
+      "degree_hours_above_ref",
+      "remaining_transit_h",
+      "delay_h",
+      "exposure_h",
+      "maturity"
+    ],
+    "numeric": [
+      "age_h",
+      "temp_mean_c",
+      "temp_max_c",
+      "degree_hours_above_ref",
+      "remaining_transit_h",
+      "delay_h",
+      "exposure_h"
+    ],
+    "version": "1.0.0"
+  },
+  "feature_schema_hash": "4b4e00408a2fb64cf35e1ea91029c24dbd080513a45adeb439e5924d33411093",
+  "feature_version": "1.0.0",
+  "git_commit": "dbfc9c71e136a69ba716c5f00689ec7b7c378b9c",
+  "go_nogo": "LIGHTGBM NO-GO",
+  "go_nogo_reasons": [
+    "decision_agreement: None (required >= 0.85) NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')"
+  ],
+  "hyperparameters": {
+    "early_stopping_rounds": 200,
+    "feature_fraction": 0.9,
+    "learning_rate": 0.05,
+    "min_child_samples": 100,
+    "mode": "pinball_custom_monotone",
+    "monotone_constraints_method": "advanced",
+    "n_estimators": 3000,
+    "num_leaves": 31,
+    "seed": 42
+  },
+  "loss_model_contract": "salva_core.contracts.LossModel",
+  "metrics": {
+    "candidate_test": {
+      "coverage_p10_p90": 0.7693692072347701,
+      "mae_p50_vs_realised": 0.07706753526504254,
+      "n_lots": 500,
+      "n_rows": 11113,
+      "pinball": {
+        "0.05": 0.009601235128213158,
+        "0.10": 0.01622660999581306,
+        "0.25": 0.030912519242611347,
+        "0.50": 0.03853555926455669,
+        "0.75": 0.031247875381754626,
+        "0.90": 0.017496071409557636,
+        "0.95": 0.010352137759520262
+      },
+      "pinball_mean": 0.022053144026003828,
+      "quantile_order_violations": 0
+    },
+    "decision_agreement": {
+      "reason": "P1 engines not available yet (No module named 'salva_core.recommendation')",
+      "status": "NOT_EVALUATED"
+    },
+    "fidelity_test": {
+      "mae_p10": 0.025578175625608175,
+      "mae_p50": 0.02346321196727021,
+      "mae_p90": 0.02164599831061751,
+      "max_abs_p50": 0.1769150472681411
+    },
+    "latency": {
+      "max_ms": 251.76595300001736,
+      "median_ms": 214.88407599997572,
+      "n_rows": 10000
+    },
+    "monotonicity": {
+      "by_perturbation": {
+        "diurnal_amplitude": 0,
+        "exposure_age": 0,
+        "maturity": 0,
+        "temperature": 0,
+        "transit": 0
+      },
+      "n_rows": 2000,
+      "total_violations": 0
+    }
+  },
+  "model_type": "lightgbm-quantile",
+  "model_version": "lgbm-1.0.0-83dd816d-s42",
+  "product": "tomato",
+  "products_yaml_sha256": "49b7c5bd4a18a64f0aa6c0de7cbb3067e969b0c286228f6b2ea102ffed16686a",
+  "quantiles": [
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    0.95
+  ],
+  "real_world_validation": "NOT PERFORMED",
+  "seed": 42,
+  "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc",
+  "train_mode": "pinball_custom_monotone"
+}
