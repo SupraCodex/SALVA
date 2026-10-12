@@ -1,0 +1,97 @@
+"""Kinetic quality model (pure, deterministic, vectorised).
+
+Mean quality of a lot after ``hours`` of exposure:
+
+    k = k_ref * q10 ** ((T_mean - T_ref) / 10) * I0(A * ln(q10) / 10) * m_mat * k_lot
+    Q = exp(-k * hours)                                   Q in (0, 1]
+
+* T_mean: effective mean product temperature (degC); A = T_max - T_mean >= 0 is the
+  half amplitude of the daily cycle.  Averaging the Q10 law over a sinusoidal day gives
+  the exact factor I0(A ln(q10) / 10), where I0 is the modified Bessel function of order 0.
+  It is >= 1: temperature swings accelerate decay for the same mean temperature.
+* m_mat: maturity multiplier; k_lot: lot-to-lot multiplier (lognormal, see
+  loss_model.kinetic_model).
+
+Individual fruit quality is lognormal around Q:  q_i = Q * exp(sigma_h * eps).
+Fruits are graded A/B/C/D by thresholds, each grade has a price multiplier, and
+packaging causes an immediate multiplicative damage.  The *loss* of a lot is
+``1 - value_fraction * (1 - pack_damage)``.
+
+No network, no database, no web framework, no LLM.  All constants come from
+ProductParams (data/reference/products.yaml); they are starting points, not results.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+from scipy.special import i0, ndtr
+
+from .params import ProductParams, lookup
+
+_EPS = 1e-12
+GRADE_NAMES = ("A", "B", "C", "D")
+
+
+def thermal_factor(temp_mean_c, temp_max_c, p: ProductParams):
+    """Acceleration of decay vs reference: Q10 law averaged over the daily cycle."""
+    t_mean = np.asarray(temp_mean_c, dtype=float)
+    amp = np.maximum(np.asarray(temp_max_c, dtype=float) - t_mean, 0.0)
+    q10_term = p.q10 ** ((t_mean - p.t_ref_c) / 10.0)
+    return q10_term * i0(amp * np.log(p.q10) / 10.0)
+
+
+def degradation_rate(temp_mean_c, temp_max_c, maturity, k_lot, p: ProductParams):
+    """Decay rate k (1/h) of the mean quality."""
+    m_mat = lookup(p.maturity, maturity, "maturity")
+    return p.k_ref * thermal_factor(temp_mean_c, temp_max_c, p) * m_mat * np.asarray(k_lot)
+
+
+def mean_quality(rate, hours):
+    """Mean quality Q = exp(-k * hours), in (0, 1]."""
+    h = np.asarray(hours, dtype=float)
+    if np.any(h < 0):
+        raise ValueError("hours must be >= 0")
+    q = np.exp(-np.asarray(rate, dtype=float) * h)
+    return np.clip(q, _EPS, 1.0)
+
+
+def grade_fractions(q_mean, p: ProductParams) -> np.ndarray:
+    """Fractions of fruit in grades A, B, C, D; array of shape (4, *shape(q_mean))."""
+    q = np.clip(np.asarray(q_mean, dtype=float), _EPS, 1.0)
+    below = [ndtr(np.log(th / q) / p.sigma_h) for th, _ in p.grades]  # P(q_i < threshold)
+    fa = 1.0 - below[0]
+    fb = below[0] - below[1]
+    fc = below[1] - below[2]
+    fd = below[2]
+    return np.stack([fa, fb, fc, fd])
+
+
+def quality_to_grade(q_fruit: float, p: ProductParams) -> str:
+    """Grade (A-D) of ONE fruit of quality ``q_fruit`` in (0, 1]."""
+    if not 0 < q_fruit <= 1.0 + 1e-12:
+        raise ValueError("fruit quality must be in (0, 1]")
+    for (th, _), name in zip(p.grades, GRADE_NAMES, strict=False):
+        if q_fruit >= th:
+            return name
+    return GRADE_NAMES[-1]
+
+
+def value_fraction(q_mean, p: ProductParams):
+    """Expected fraction of full value of a lot of mean quality ``q_mean`` (no damage)."""
+    frac = grade_fractions(q_mean, p)
+    mult = [m for _, m in p.grades] + [0.0]
+    return sum(f * m for f, m in zip(frac, mult, strict=True))
+
+
+def value_loss(q_mean, packaging, p: ProductParams):
+    """Loss fraction in [0, 1]: 1 - value_fraction * (1 - packaging damage)."""
+    damage = lookup(p.pack_damage, packaging, "packaging")
+    loss = 1.0 - value_fraction(q_mean, p) * (1.0 - damage)
+    return np.clip(loss, 0.0, 1.0)
+
+
+def quality_and_loss(f, k_lot, p: ProductParams):
+    """Mean quality and loss for ConditionFeatures ``f`` and lot multiplier ``k_lot``."""
+    rate = degradation_rate(f.temp_mean_c, f.temp_max_c, f.maturity, k_lot, p)
+    q = mean_quality(rate, f.exposure_h)
+    return q, value_loss(q, f.packaging, p)

@@ -1,0 +1,6 @@
+market_id,nom,ville,latitude,longitude,prix_ref_fcfa_kg,absorption_kg_jour,source,date_source
+M01,Marche Mboppi,Douala,4.0700,9.7150,600,4000,hypothese: ordre de grandeur a remplacer par un releve de prix (MINCOMMERCE ou INS) ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
+M02,Marche Central de Bafoussam,Bafoussam,5.4760,10.4180,400,3000,hypothese: prix de zone de production a remplacer par un releve ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
+M03,Marche Mokolo,Yaounde,3.8650,11.5150,550,3500,hypothese: prix a remplacer par un releve de prix ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
+M04,Marche Central de Dschang,Dschang,5.4430,10.0530,400,1200,hypothese: prix et absorption a confirmer par entretien avec un commercant ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
+M05,Marche de Nkongsamba,Nkongsamba,4.9550,9.9400,450,1000,hypothese: prix et absorption a confirmer par entretien avec un commercant ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
