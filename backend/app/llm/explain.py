@@ -1,59 +1,75 @@
-"""Single entry point for the explanation service.
+"""Single entry point of the explanation layer (design document §23.4).
 
-    result = await explain(facts, "fr", get_provider(settings))
+    result = await explain(facts, "fr", provider)
 
-Never raises: any failure, timeout or invented number => template (HTTP 200).
+The deterministic template is computed first, so it is always available. The LLM output is
+validated (schema, numbers, decision, wording, language); any failure, timeout or rejection
+returns the template with the rejection reason. This function never raises.
 """
+
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from .prompts import SYSTEM_PROMPT, build_user_prompt
 from .provider import LLMProvider
 from .providers.template import render
 from .schemas import (
-    GEMINI_SCHEMA,
+    JSON_SCHEMA,
     ExplanationFacts,
     ExplanationOut,
     ExplanationResult,
     Lang,
 )
-from .validator import invented_numbers
+from .validator import check
 
 log = logging.getLogger("salva.llm")
 
 
-def _template(facts: ExplanationFacts, lang: Lang) -> ExplanationResult:
-    return ExplanationResult(**render(facts, lang).model_dump(),
-                             source="template", lang=lang)
+def _template(facts: ExplanationFacts, lang: Lang, reason: str | None = None) -> ExplanationResult:
+    return ExplanationResult(
+        **render(facts, lang).model_dump(),
+        source="template",
+        provider="template",
+        validated=True,
+        lang=lang,
+        rejection_reason=reason,
+    )
 
 
 async def explain(
-    facts: ExplanationFacts,
-    lang: Lang,
-    provider: LLMProvider,
-    timeout: float = 8.0,
+    facts: ExplanationFacts, lang: Lang, provider: LLMProvider, timeout: float = 8.0
 ) -> ExplanationResult:
+    template = _template(facts, lang)
     if provider.name == "template":
-        return _template(facts, lang)
-
-    facts_text = facts.model_dump_json()
+        return template
     try:
-        raw = await provider.generate_json(
-            SYSTEM_PROMPT,
-            build_user_prompt(facts, lang),
-            GEMINI_SCHEMA,
+        raw = await asyncio.wait_for(
+            provider.generate_json(
+                SYSTEM_PROMPT,
+                build_user_prompt(facts, lang),
+                JSON_SCHEMA,
+                timeout=timeout,
+            ),
             timeout=timeout,
         )
         out = ExplanationOut.model_validate(raw)
-    except Exception as exc:  # noqa: BLE001 - fallback must catch everything
-        log.warning("llm failed, using template: %s", type(exc).__name__)
-        return _template(facts, lang)
-
-    text = f"{out.summary} {out.risk} {out.scenarios} {out.caveats}"
-    bad = invented_numbers(text, facts_text)
-    if bad:
-        log.warning("llm invented numbers %s, using template", sorted(bad))
-        return _template(facts, lang)
-
-    return ExplanationResult(**out.model_dump(), source="llm", lang=lang)
+    except TimeoutError:
+        log.warning("llm_rejected", extra={"reason": "timeout", "provider": provider.name})
+        return _template(facts, lang, "timeout")
+    except Exception as exc:  # noqa: BLE001 - the fallback must catch everything
+        reason = f"error:{type(exc).__name__}"
+        log.warning("llm_rejected", extra={"reason": reason, "provider": provider.name})
+        return _template(facts, lang, reason)
+    reason = check(out, facts, lang)
+    if reason:
+        log.warning("llm_rejected", extra={"reason": reason, "provider": provider.name})
+        return _template(facts, lang, reason)
+    return ExplanationResult(
+        **out.model_dump(),
+        source="llm",
+        provider=provider.name,
+        validated=True,
+        lang=lang,
+    )

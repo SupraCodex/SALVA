@@ -1,4 +1,5 @@
 """Common interface for every LLM provider (template, gemini, ...)."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -11,6 +12,4 @@ class LLMError(Exception):
 class LLMProvider(Protocol):
     name: str
 
-    async def generate_json(
-        self, system: str, user: str, schema: dict, timeout: float = 8.0
-    ) -> dict: ...
+    async def generate_json(self, system: str, user: str, schema: dict, timeout: float = 8.0) -> dict: ...
