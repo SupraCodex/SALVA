@@ -51,6 +51,8 @@ docker compose up --build         # http://localhost:8000
 Without Docker (Python 3.11+, Node 20+, PostgreSQL 16): see [docs/runbook.md](docs/runbook.md)
 (`make install`, `make demo`, `make run`).
 
+Online, for free (Render + Neon): [docs/deployment.md](docs/deployment.md).
+
 Demo walkthrough and video plan: [docs/demo-script.md](docs/demo-script.md).
 
 ## Repository layout

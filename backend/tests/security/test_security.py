@@ -5,6 +5,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from app.db import session
 from app.main import _mount_frontend
 from tests.conftest import add_storage, analyze, create_lot, register, simulate
 
@@ -182,3 +183,12 @@ def test_frontend_assets_are_compressed_and_cached(tmp_path, monkeypatch):
     page = c.head("/lots/x/analysis")
     assert page.status_code == 200
     assert c.get("/lots/x/analysis").headers["cache-control"] == "no-cache"
+
+
+def test_liveness_does_not_need_the_database(client, monkeypatch):
+    def broken():
+        raise AssertionError("the liveness probe must not open a database session")
+
+    monkeypatch.setattr(session, "get_sessionmaker", broken)
+    r = client.get("/api/v1/health/live")
+    assert r.status_code == 200 and r.json() == {"status": "ok"}

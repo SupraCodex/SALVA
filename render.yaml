@@ -1,0 +1,31 @@
+# Render Blueprint: one free web service built from the Dockerfile.
+# The database is external (Neon free plan, see docs/deployment.md): paste its URL when asked.
+services:
+  - type: web
+    name: salva
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health/live
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: WEATHER_ENABLED
+        value: "true"
+      - key: LLM_PROVIDER
+        value: template
+      - key: SEED_DEMO
+        value: "true"
+      - key: DEMO_USER_EMAIL
+        value: demo@salva.example
+      - key: DEMO_USER_PASSWORD
+        sync: false

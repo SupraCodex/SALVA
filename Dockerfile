@@ -15,8 +15,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     FRONTEND_DIST=/app/frontend/dist \
     REFERENCE_DIR=/app/data/reference \
-    SALVA_REPO_ROOT=/app
+    SALVA_REPO_ROOT=/app \
+    FORWARDED_ALLOW_IPS=*
 WORKDIR /app
+# LightGBM (experimental model) needs the OpenMP runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 
 COPY core/ core/
 COPY backend/pyproject.toml backend/

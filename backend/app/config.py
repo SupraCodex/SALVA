@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEV_SECRET = "development-only-secret-change-me-0123456789abcdef"  # noqa: S105 - refused in production
@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://salva:salva@localhost:5432/salva"
     reference_dir: Path = REPO_ROOT / "data" / "reference"
     frontend_dist: Path = REPO_ROOT / "frontend" / "dist"
-    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:8000"]
+    # Comma-separated in the environment: "https://a.example,https://b.example".
+    allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://localhost:8000"]
     max_body_bytes: int = 64 * 1024
 
     # Authentication (SEC-01, SEC-02)
@@ -65,6 +66,16 @@ class Settings(BaseSettings):
     # Demo seed
     demo_user_email: str = "demo@salva.example"
     demo_user_password: str | None = None
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _psycopg_driver(cls, value):
+        """Hosted databases hand out postgres:// or postgresql:// URLs; SQLAlchemy needs the driver."""
+        if isinstance(value, str):
+            for prefix in ("postgres://", "postgresql://"):
+                if value.startswith(prefix):
+                    return "postgresql+psycopg://" + value[len(prefix) :]
+        return value
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
