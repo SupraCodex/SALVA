@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { Brand, LanguageSwitch } from "../components/Layout";
-import { Field, Input, Notice } from "../components/ui";
+import { Disclaimer, Field, Input, Notice } from "../components/ui";
 import { ApiError, NETWORK_ERROR } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { toApiError } from "../lib/hooks";
@@ -27,29 +27,44 @@ function useSubmit() {
 
 function AuthFrame({ title, intro, children }: { title: string; intro?: string; children: React.ReactNode }) {
   const { t } = useI18n();
+  const steps = [
+    { title: t("auth.step1Title"), text: t("auth.step1Text") },
+    { title: t("auth.step2Title"), text: t("auth.step2Text") },
+    { title: t("auth.step3Title"), text: t("auth.step3Text") },
+  ];
   return (
     <div className="auth">
-      <section className="auth__pitch">
-        <Brand />
-        <p className="auth__lead">{t("auth.pitch")}</p>
-        <ul className="auth__points">
-          <li>{t("auth.pitchPoint1")}</li>
-          <li>{t("auth.pitchPoint2")}</li>
-          <li>{t("auth.pitchPoint3")}</li>
-        </ul>
-        <div className="auth__sample" aria-hidden="true">
-          <span className="auth__sample-band" />
-          <span className="auth__sample-tick" />
-        </div>
-      </section>
-      <section className="auth__panel">
-        <div className="auth__lang">
-          <LanguageSwitch />
-        </div>
-        <h1>{title}</h1>
-        {intro && <p className="muted">{intro}</p>}
-        {children}
-      </section>
+      <header className="auth__bar">
+        <Brand tagline />
+        <LanguageSwitch />
+      </header>
+      <div className="auth__body">
+        <section className="auth__intro" aria-labelledby="auth-headline">
+          <h1 id="auth-headline" className="auth__headline">{t("auth.headline")}</h1>
+          <p className="auth__lead">{t("auth.pitch")}</p>
+          <ol className="auth__steps">
+            {steps.map((step, i) => (
+              <li key={step.title}>
+                <span className="auth__step-num" aria-hidden="true">{i + 1}</span>
+                <span>
+                  <strong>{step.title}</strong>
+                  <span className="auth__step-text">{step.text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className="auth__panel" aria-labelledby="auth-title">
+          <div className="auth__card">
+            <h2 id="auth-title">{title}</h2>
+            {intro && <p className="muted">{intro}</p>}
+            {children}
+          </div>
+        </section>
+      </div>
+      <footer className="auth__foot">
+        <Disclaimer />
+      </footer>
     </div>
   );
 }

@@ -119,7 +119,7 @@ function SensitivityPanel({ simulation }: { simulation: Simulation }) {
             </div>
             {data.temperatures_c.map((temp) => (
               <div role="row" className="sens-grid__row" key={temp}>
-                <span role="rowheader">{num(temp, lang)} °C</span>
+                <span role="rowheader">{num(temp, lang)} °C</span>
                 {data.delays_h.map((d) => {
                   const pt = data.points.find((p) => p.temp_c === temp && p.delay_h === d);
                   const current = Math.abs(temp - data.current.temp_c) < 0.05 && Math.abs(d - data.current.delay_h) < 0.05;
@@ -138,8 +138,8 @@ function SensitivityPanel({ simulation }: { simulation: Simulation }) {
           ) : (
             <ul className="transitions">
               {data.transitions.slice(0, 6).map((tr, i) => {
-                const unit = tr.axis === "temperature" ? " °C" : " h";
-                const other = tr.axis === "temperature" ? `${hours(tr.fixed_value, lang)}` : `${num(tr.fixed_value, lang)} °C`;
+                const unit = tr.axis === "temperature" ? "\u00a0°C" : "\u00a0h";
+                const other = tr.axis === "temperature" ? `${hours(tr.fixed_value, lang)}` : `${num(tr.fixed_value, lang)} °C`;
                 return (
                   <li key={i}>
                     {t("sim.sensitivityTransition", {
@@ -168,6 +168,7 @@ export function SimulationView({ ctx }: { ctx: LotContext }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [editing, setEditing] = useState(false);
+  const [allAssumptions, setAllAssumptions] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const currentDraft = useMemo(() => draft ?? draftFrom(simulation, markets.data ?? []), [draft, simulation, markets.data]);
@@ -282,6 +283,9 @@ export function SimulationView({ ctx }: { ctx: LotContext }) {
   const feasible = orderScenarios(simulation.scenarios, reco.ranked_scenario_ids);
   const unavailable = simulation.scenarios.filter((s) => !s.feasible);
   const hasSplit = feasible.some((s) => s.action === "optimized_split");
+  const firstAssumptions = simulation.assumptions.filter((a, i) => i < 8 || a.user_override);
+  const hiddenCount = simulation.assumptions.length - firstAssumptions.length;
+  const shownAssumptions = allAssumptions ? simulation.assumptions : firstAssumptions;
 
   return (
     <div className="simulation">
@@ -308,7 +312,7 @@ export function SimulationView({ ctx }: { ctx: LotContext }) {
       <section className="panel" aria-labelledby="assumptions-list">
         <h2 id="assumptions-list">{t("sim.assumptionsTitle")}</h2>
         <ul className="assumption-list">
-          {simulation.assumptions.map((a) => (
+          {shownAssumptions.map((a) => (
             <li key={a.key}>
               <span className="assumption-list__key">{assumptionLabel(a, markets.data ?? [], simulation, td, lang)}</span>
               <span>
@@ -317,6 +321,11 @@ export function SimulationView({ ctx }: { ctx: LotContext }) {
             </li>
           ))}
         </ul>
+        {hiddenCount > 0 && (
+          <button type="button" className="link-button" aria-expanded={allAssumptions} onClick={() => setAllAssumptions((v) => !v)}>
+            {allAssumptions ? t("sim.showLess") : t("sim.showAll", { n: hiddenCount })}
+          </button>
+        )}
         <p className="muted small">
           {t("sim.duration", { n: simulation.n_draws, seed: simulation.seed, ms: Math.round(simulation.duration_ms) })}
         </p>

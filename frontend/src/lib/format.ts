@@ -6,12 +6,12 @@ const locales: Record<Lang, string> = { fr: "fr-FR", en: "en-GB" };
 
 export function fcfa(value: number | null | undefined, lang: Lang): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "–";
-  return `${new Intl.NumberFormat(locales[lang], { maximumFractionDigits: 0 }).format(Math.round(value))} FCFA`;
+  return `${new Intl.NumberFormat(locales[lang], { maximumFractionDigits: 0 }).format(Math.round(value))}\u00a0FCFA`;
 }
 
 export function kg(value: number | null | undefined, lang: Lang): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "–";
-  return `${new Intl.NumberFormat(locales[lang], { maximumFractionDigits: 0 }).format(Math.round(value))} kg`;
+  return `${new Intl.NumberFormat(locales[lang], { maximumFractionDigits: 0 }).format(Math.round(value))}\u00a0kg`;
 }
 
 export function pct(fraction: number | null | undefined, lang: Lang): string {
@@ -34,7 +34,7 @@ export function sig(value: number, lang: Lang): string {
 
 export function hours(value: number | null | undefined, lang: Lang): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "–";
-  return `${num(value, lang, value < 10 ? 1 : 0)} h`;
+  return `${num(value, lang, value < 10 ? 1 : 0)}\u00a0h`;
 }
 
 export function dateTime(iso: string | null | undefined, lang: Lang): string {

@@ -6,18 +6,18 @@ import { Link, useRouter } from "../lib/router";
 import type { Lang } from "../lib/types";
 import { Disclaimer } from "./ui";
 
-export function Brand() {
+export function Brand({ tagline = false }: { tagline?: boolean }) {
   const { t } = useI18n();
   return (
     <Link to="/" className="brand" aria-label="SALVA">
-      <svg viewBox="0 0 32 32" className="brand__mark" aria-hidden="true">
-        <rect width="32" height="32" rx="7" />
-        <rect x="6" y="14" width="20" height="5" rx="2.5" className="brand__band" />
-        <rect x="13" y="11" width="2.4" height="11" rx="1.2" className="brand__tick" />
+      <svg viewBox="0 0 28 28" className="brand__mark" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="26" rx="6" className="brand__tile" />
+        <rect x="6" y="12" width="16" height="4.5" rx="2.25" className="brand__band" />
+        <rect x="12" y="9" width="2.2" height="10.5" rx="1.1" className="brand__tick" />
       </svg>
       <span className="brand__text">
         <span className="brand__name">SALVA</span>
-        <span className="brand__tagline">{t("app.tagline")}</span>
+        {tagline && <span className="brand__tagline">{t("app.tagline")}</span>}
       </span>
     </Link>
   );
@@ -59,64 +59,64 @@ export function Layout({ children }: { children: ReactNode }) {
     { to: "/assumptions", label: t("nav.assumptions"), active: path === "/assumptions" },
     ...(user?.role === "admin" ? [{ to: "/admin", label: t("nav.admin"), active: path === "/admin" }] : []),
   ];
+  const signOut = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
   return (
     <div className="shell">
       <a className="skip" href="#main">
         {t("app.skip")}
       </a>
       <header className="topbar">
-        <Brand />
-        <button
-          type="button"
-          className="topbar__menu button button--quiet"
-          aria-expanded={open}
-          aria-controls="main-nav"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {t("nav.menu")}
-        </button>
-      </header>
-      <nav id="main-nav" className={`sidebar${open ? " is-open" : ""}`} aria-label={t("nav.menu")}>
-        <ul className="sidebar__list">
-          {items.map((item) => (
-            <li key={item.to}>
-              <Link
-                to={item.to}
-                className={`sidebar__link${item.active ? " is-active" : ""}`}
-                aria-current={item.active ? "page" : undefined}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <div className="sidebar__foot">
-          <LanguageSwitch />
-          {user && (
-            <div className="sidebar__user">
-              <span className="sidebar__org">{user.organization_name}</span>
-              <span className="muted small">{user.email}</span>
-              <button
-                type="button"
-                className="button button--quiet button--small"
-                onClick={async () => {
-                  await logout();
-                  navigate("/login", { replace: true });
-                }}
-              >
-                {t("nav.signOut")}
-              </button>
+        <div className="topbar__inner">
+          <Brand />
+          <nav id="main-nav" className={`nav${open ? " is-open" : ""}`} aria-label={t("nav.menu")}>
+            <ul className="nav__list">
+              {items.map((item) => (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    className={`nav__link${item.active ? " is-active" : ""}`}
+                    aria-current={item.active ? "page" : undefined}
+                    onClick={() => setOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="nav__account">
+              <LanguageSwitch />
+              {user && (
+                <div className="account">
+                  <span className="account__org">{user.organization_name}</span>
+                  <span className="account__email">{user.email}</span>
+                  <button type="button" className="link-button account__out" onClick={signOut}>
+                    {t("nav.signOut")}
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </nav>
+          <button
+            type="button"
+            className="topbar__menu"
+            aria-expanded={open}
+            aria-controls="main-nav"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="topbar__menu-icon" aria-hidden="true" />
+            {t("nav.menu")}
+          </button>
         </div>
-      </nav>
+      </header>
       <main id="main" className="main" tabIndex={-1}>
         {children}
-        <footer className="footer">
-          <Disclaimer />
-        </footer>
       </main>
+      <footer className="footer">
+        <Disclaimer />
+      </footer>
     </div>
   );
 }
