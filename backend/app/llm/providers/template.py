@@ -26,7 +26,7 @@ _T = {
         "reco_none": "Pas de gagnant net : comparez « {a} » et « {b} » selon vos contraintes avant de décider.",
         "reco_empty": "Aucune recommandation ne peut être formulée sans option réalisable.",
         "reasons": " Motifs : {reasons}.",
-        "base": "Estimation basée sur un modèle, non validée sur données terrain ; ce n'est pas une garantie.",
+        "base": "",
     },
     "en": {
         "summary_best": "In the current simulation, the option “{best}” has the best recovery "

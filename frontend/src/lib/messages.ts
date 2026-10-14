@@ -3,7 +3,7 @@
 
 export const fr = {
   "app.tagline": "Décidez avant que la perte ne survienne.",
-  "app.disclaimer": "Estimation basée sur un modèle, non validée sur données terrain. Ce n'est pas une garantie.",
+  "app.disclaimer": "",
   "app.disclaimerLink": "Voir les hypothèses",
   "app.skip": "Aller au contenu",
   "nav.dashboard": "Lots",
