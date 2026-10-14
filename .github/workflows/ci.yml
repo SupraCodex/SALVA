@@ -144,6 +144,35 @@ jobs:
       - if: failure()
         run: cat /tmp/uvicorn.log
 
+  docker:
+    name: docker compose (build and smoke test)
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the stack
+        run: |
+          {
+            echo "JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+            echo "COOKIE_SECURE=false"
+            echo "WEATHER_ENABLED=false"
+            echo "SEED_DEMO=true"
+            echo "DEMO_USER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(16))')"
+          } > .env
+          docker compose up --build -d
+      - name: Wait for the health endpoint and the interface
+        run: |
+          for i in $(seq 1 60); do
+            curl -fs http://localhost:8000/api/v1/health && break
+            sleep 2
+          done
+          curl -fs http://localhost:8000/api/v1/health | grep '"database":"up"'
+          curl -fs http://localhost:8000/ | grep -q '<div id="root">'
+      - if: always()
+        run: docker compose logs app | tail -100
+      - if: always()
+        run: docker compose down -v
+
   security:
     name: secrets and dependency audit
     runs-on: ubuntu-latest
