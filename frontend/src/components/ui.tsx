@@ -1,9 +1,10 @@
 // Shared, accessible building blocks: fields, notices, states and source badges.
 
-import { useId, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
+import { useId, useState, type ReactNode, type InputHTMLAttributes, type SelectHTMLAttributes } from "react";
 
 import { ApiError, NETWORK_ERROR } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import { passwordStrength } from "../lib/password";
 import { Link } from "../lib/router";
 
 export function Field({
@@ -50,6 +51,53 @@ export function Field({
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className="input" {...props} />;
+}
+
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const { t } = useI18n();
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password">
+      <input className="input password__input" {...props} type={visible ? "text" : "password"} spellCheck={false} autoCapitalize="none" />
+      <button
+        type="button"
+        className="password__toggle"
+        aria-label={visible ? t("auth.hidePassword") : t("auth.showPassword")}
+        title={visible ? t("auth.hidePassword") : t("auth.showPassword")}
+        aria-pressed={visible}
+        aria-controls={props.id}
+        onClick={() => setVisible((v) => !v)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="password__icon">
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+          {visible && <path d="M3 3l18 18" />}
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+export function PasswordStrength({ value }: { value: string }) {
+  const { t } = useI18n();
+  const level = passwordStrength(value);
+  const labels = ["", t("auth.strength1"), t("auth.strength2"), t("auth.strength3"), t("auth.strength4")];
+  return (
+    <div className={`strength strength--${level}`}>
+      <div className="strength__bar" aria-hidden="true">
+        {[1, 2, 3, 4].map((i) => (
+          <span key={i} className={i <= level ? "is-on" : undefined} />
+        ))}
+      </div>
+      <p className="strength__label" aria-live="polite">
+        {level > 0 && (
+          <>
+            {t("auth.strength")} <strong>{labels[level]}</strong>
+          </>
+        )}
+      </p>
+    </div>
+  );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -198,9 +246,11 @@ export function SourceBadge({ source }: { source: string }) {
 
 export function Disclaimer() {
   const { t } = useI18n();
+  const text = t("app.disclaimer").trim();
   return (
     <p className="disclaimer">
-      {t("app.disclaimer")} <Link to="/assumptions">{t("app.disclaimerLink")}</Link>
+      {text && `${text} `}
+      <Link to="/assumptions">{t("app.disclaimerLink")}</Link>
     </p>
   );
 }

@@ -96,7 +96,7 @@ def render(facts: ExplanationFacts, lang: Lang) -> ExplanationOut:
         for s in facts.scenarios
     ]
     comparison = " ".join(lines) if lines else t["no_scenario"]
-    caveats = [t["base"], *facts.assumptions]
+    caveats = [c for c in (t["base"], *facts.assumptions) if c]
     return ExplanationOut(
         summary=summary[:400],
         risk_explanation=risk[:900],

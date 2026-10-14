@@ -10,8 +10,12 @@ test("French and English dictionaries have the same keys", () => {
   assert.deepEqual(Object.keys(en).sort(), Object.keys(fr).sort());
 });
 
+// The general disclaimer sentence may be left empty on purpose: only the link is then shown.
+const MAY_BE_EMPTY = new Set(["app.disclaimer"]);
+
 test("translations keep the same placeholders and are never empty", () => {
   for (const key of Object.keys(fr) as (keyof typeof fr)[]) {
+    if (MAY_BE_EMPTY.has(key)) continue;
     assert.ok(fr[key].trim(), `empty fr ${key}`);
     assert.ok(en[key].trim(), `empty en ${key}`);
     assert.deepEqual(placeholders(en[key]), placeholders(fr[key]), key);

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { Brand, LanguageSwitch } from "../components/Layout";
-import { Disclaimer, Field, Input, Notice } from "../components/ui";
+import { Disclaimer, Field, Input, Notice, PasswordInput, PasswordStrength } from "../components/ui";
 import { ApiError, NETWORK_ERROR } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { toApiError } from "../lib/hooks";
@@ -98,7 +98,7 @@ export function LoginPage() {
         </Field>
         <Field label={t("auth.password")}>
           {(p) => (
-            <Input {...p} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput {...p} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           )}
         </Field>
         <button className="button button--primary" type="submit" disabled={busy}>
@@ -138,7 +138,12 @@ export function RegisterPage() {
           {(p) => <Input {...p} type="email" autoComplete="email" required value={form.email} onChange={set("email")} />}
         </Field>
         <Field label={t("auth.password")} hint={t("auth.passwordHint")} error={fields.password}>
-          {(p) => <Input {...p} type="password" autoComplete="new-password" required minLength={10} value={form.password} onChange={set("password")} />}
+          {(p) => (
+            <>
+              <PasswordInput {...p} autoComplete="new-password" required minLength={10} maxLength={128} value={form.password} onChange={set("password")} />
+              <PasswordStrength value={form.password} />
+            </>
+          )}
         </Field>
         <button className="button button--primary" type="submit" disabled={busy}>
           {t("auth.register")}

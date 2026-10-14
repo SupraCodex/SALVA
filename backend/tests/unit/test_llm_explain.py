@@ -72,7 +72,7 @@ def test_template_always_works_and_uses_only_fact_numbers():
     assert r.source == "template" and r.lang == "fr" and r.validated
     assert "190 000 FCFA" in r.scenario_comparison
     assert "Réorienter vers Mokolo (Yaoundé)" in r.recommendation_text
-    assert r.caveats[0].startswith("Estimation basée sur un modèle")
+    assert all(c.strip() for c in r.caveats)
 
 
 def test_valid_llm_output_is_used():

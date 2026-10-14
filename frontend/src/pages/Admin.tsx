@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 
-import { ErrorState, Field, Input, Notice, Select, Skeleton } from "../components/ui";
+import { ErrorState, Field, Input, Notice, PasswordInput, PasswordStrength, Select, Skeleton } from "../components/ui";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { dateTime, fcfa, kg } from "../lib/format";
@@ -378,7 +378,10 @@ function Users() {
           </Field>
           <Field label={t("admin.password")} hint={t("auth.passwordHint")} error={errors.password}>
             {(p) => (
-              <Input {...p} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <>
+                <PasswordInput {...p} autoComplete="new-password" maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordStrength value={password} />
+              </>
             )}
           </Field>
           <Field label={t("admin.role")} error={errors.role}>

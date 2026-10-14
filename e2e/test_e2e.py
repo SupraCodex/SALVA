@@ -14,6 +14,24 @@ def test_unauthenticated_visit_redirects_to_sign_in(page: Page):
     expect(page.get_by_role("heading", name="Sign in")).to_be_visible()
 
 
+def test_password_field_can_be_shown_and_rates_strength(page: Page):
+    page.goto(f"{BASE_URL}/register")
+    field = page.get_by_label("Password", exact=True)
+    expect(field).to_have_attribute("type", "password")
+    page.get_by_role("button", name="Show password").click()
+    expect(field).to_have_attribute("type", "text")
+    page.get_by_role("button", name="Hide password").click()
+    expect(field).to_have_attribute("type", "password")
+
+    field.fill("tomates")
+    expect(page.locator(".strength")).to_have_class(re.compile(r"strength--1"))
+    expect(page.locator(".strength__label")).to_contain_text("weak")
+    field.fill("Tomates-marche7")
+    expect(page.locator(".strength")).to_have_class(re.compile(r"strength--4"))
+    expect(page.locator(".strength__label")).to_contain_text("strong")
+    expect(page.locator(".modal, [role=dialog]")).to_have_count(0)
+
+
 def test_nominal_flow_from_lot_to_recommendation(page: Page):
     """E2E-1 and E2E-3: lot -> risk band -> scenarios -> recommendation with a checked explanation."""
     register(page)

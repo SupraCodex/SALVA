@@ -59,7 +59,7 @@ def register(page: Page) -> str:
     page.goto(f"{BASE_URL}/register")
     page.get_by_label("Organization name").fill(f"E2E cooperative {email[4:14]}")
     page.get_by_label("E-mail address").fill(email)
-    page.get_by_label("Password").fill("tomates-e2e-2026")
+    page.get_by_label("Password", exact=True).fill("tomates-e2e-2026")
     page.get_by_role("button", name="Create an account").click()
     page.wait_for_url(f"{BASE_URL}/")
     return email
