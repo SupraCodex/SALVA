@@ -37,4 +37,4 @@ RUN useradd --system --uid 10001 salva && chown -R salva /app
 USER salva
 WORKDIR /app/backend
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && python -m app.seed --reference $([ \"$SEED_DEMO\" = true ] && echo --demo) && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+CMD ["sh", "-c", "python -m app.preflight && alembic upgrade head && python -m app.seed --reference $([ \"$SEED_DEMO\" = true ] && echo --demo) && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
