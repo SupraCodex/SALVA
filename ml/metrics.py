@@ -79,7 +79,11 @@ def monotonicity_violations(model: LossModel, params: ProductParams, df: pd.Data
     cases = {
         "temperature": F.with_changes(f, params, temp_mean_c=np.asarray(f.temp_mean_c) + pert["temp_mean_c_plus"]),
         "exposure_age": F.with_changes(f, params, age_h=np.asarray(f.age_h) + pert["exposure_plus_h"]),
-        "transit": F.with_changes(f, params, remaining_transit_h=np.asarray(f.remaining_transit_h) + pert["transit_plus_h"]),
+        "transit": F.with_changes(
+            f, params,
+            remaining_transit_h=np.asarray(f.remaining_transit_h) + pert["transit_plus_h"],
+            delay_h=np.minimum(np.asarray(f.delay_h), np.asarray(f.remaining_transit_h) + pert["transit_plus_h"]),
+        ),
         "diurnal_amplitude": F.with_changes(f, params, diurnal_amp_c=amp + pert["diurnal_amp_plus_c"]),
         "maturity": F.with_changes(f, params, maturity=stepped),
     }
@@ -125,9 +129,13 @@ def pairwise_ordering_agreement(model: LossModel, reference: LossModel, params: 
     n = len(sub)
 
     def alt() -> ConditionFeatures:
+        # remaining_transit_h is scaled by the hidden transit factor while delay_h is the
+        # observed delay, so a few rows have delay > remaining; cap it for the variant.
+        rem = np.asarray(f.remaining_transit_h) + rng.uniform(0, 24, n)
         return F.with_changes(
             f, params,
-            remaining_transit_h=np.asarray(f.remaining_transit_h) + rng.uniform(0, 24, n),
+            remaining_transit_h=rem,
+            delay_h=np.minimum(np.asarray(f.delay_h), rem),
             temp_mean_c=np.asarray(f.temp_mean_c) + rng.uniform(-4, 4, n),
         )
 

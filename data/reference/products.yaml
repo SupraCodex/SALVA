@@ -68,6 +68,12 @@ tomato:
         when the caller provides no maximum temperature.
       source: assumption
       note: Replace by weather-API derived value when available.
+    shelf_life_loss_threshold:
+      value: 0.25
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Business threshold pending field validation; not a scientific constant.
     maturity:
       value: {green: 0.6, breaker: 1.0, ripe: 2.0}
       unit: dimensionless multiplier on k
@@ -98,8 +104,50 @@ tomato:
         storage site of this type. 'none' = no storage.
       source: assumption
       note: >
-        Chilling injury of tomato at low temperature is NOT modelled; cold_room
-        results are optimistic. Verify literature before relying on cold_room.
+        The core applies a separate maturity-aware chilling penalty below configured
+        thresholds. This offset remains an uncalibrated site assumption; measured product
+        temperature is needed before interpreting cold-room scenarios operationally.
+    chilling_threshold_c:
+      value: {green: 10.0, breaker: 10.0, ripe: 7.0}
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold exposure.
+      source: literature
+      reference: https://postharvest.ucdavis.edu/produce-facts-sheets/tomato
+      note: >
+        10 C is the documented chilling-sensitive boundary for green tomatoes; 7 C is
+        the lower recommended short-term storage bound for firm-ripe tomatoes. These
+        operating thresholds are not universal cultivar-specific injury cutoffs.
+    chilling_onset_equivalent_h:
+      value: {green: 336.0, breaker: 336.0, ripe: 120.0}
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty starts.
+      source: assumption
+      note: >
+        Green/breaker 336 h corresponds to the 14-day mature-green storage observation;
+        ripe 120 h is the upper 5-day end of the firm-ripe short-term window. The breaker
+        value is a conservative proxy; calibrate by cultivar and maturity data.
+    chilling_temperature_scale_c:
+      value: 7.2
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent cold hours.
+      source: assumption
+      note: >
+        Initial value maps approximately 7 days at 5 C to 14 days at 10 C, as reported
+        in the UC Davis handling guidance; it is a dose model assumption, not a fitted law.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.00015
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated chilling dose.
+      source: assumption
+      note: >
+        Illustrative penalty intensity only. The cited sources do not supply a universal
+        FCFA/value-loss conversion; calibrate with local cultivar, grade and outcome data.
+    risk_thresholds:
+      value: {low_p50_max: 0.10, medium_p50_max: 0.25, low_width_max: 0.20, medium_width_max: 0.35}
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty width.
+      source: assumption
+      note: Starting business rules pending calibration with field users and outcomes.
     grades:
       value: [[0.80, 1.0], [0.60, 0.6], [0.40, 0.3]]
       unit: "[quality threshold in (0,1), price multiplier in [0,1]]"
@@ -112,3 +160,17 @@ tomato:
     temp_mean_c: {min: 0.0, max: 50.0, unit: degC}
     age_h: {min: 0.0, max: 720.0, unit: h}
     remaining_transit_h: {min: 0.0, max: 720.0, unit: h}
+    hold_h: {min: 0.0, max: 72.0, unit: h}
+  # Initial synthetic-training support derived from SALVA_Document_de_Conception.docx §28
+  # (18–38 C air, packaging/storage offsets, age 0–168 h, transit 0–72 h, storage hold 0–72 h).
+  # These are planning assumptions, NOT learned or field-calibrated ranges. A packaged model
+  # must publish its actual feature ranges and they take precedence at model registration.
+  calibration_ranges:
+    temp_mean_c: {min: 6.0, max: 40.5, unit: degC}
+    temp_max_c: {min: 10.0, max: 50.5, unit: degC}
+    degree_hours_above_ref: {min: 0.0, max: 6396.0, unit: degC*h}
+    age_h: {min: 0.0, max: 168.0, unit: h}
+    remaining_transit_h: {min: 0.0, max: 144.0, unit: h}
+    delay_h: {min: 0.0, max: 48.0, unit: h}
+    hold_h: {min: 0.0, max: 72.0, unit: h}
+    exposure_h: {min: 0.0, max: 312.0, unit: h}

@@ -30,8 +30,9 @@ loss = 1 − value_fraction(Q) · (1 − pack_damage)            in [0, 1]
 * Functions are pure, typed, vectorised; no network, DB, FastAPI or LLM.
 
 **Known simplifications** (also in `model-card` input): constant mean temperature plus a
-sinusoidal day; no humidity, ethylene or vibration; **chilling injury is not modelled**
-(`cold_room` results are optimistic); a fresh lot already has ≈ 3% grading loss + packaging
+sinusoidal day; no humidity, ethylene or vibration; chilling injury is a configured
+dose-response penalty below maturity-specific thresholds (labels include it since generator
+2.0.0), not a fitted law, so `cold_room` results stay assumption-driven; a fresh lot already has ≈ 3% grading loss + packaging
 damage because of `σ_h`; `delay_h` acts only through `remaining_transit_h`.
 
 ## 2. Parameters (`data/reference/products.yaml`)
@@ -39,7 +40,8 @@ damage because of `σ_h`; `delay_h` acts only through `remaining_transit_h`.
 Each parameter has `value, unit, description, source, note`; `source ∈ {literature,
 interview, assumption}` and `literature` requires a `reference`. `core/salva_core/params.py`
 rejects incomplete entries and inconsistent values (ordering of maturity/grades, bounds).
-Currently **all sources are `assumption`**. Do not change a source without a real reference.
+Currently every source is `assumption` except the chilling thresholds (`literature`, UC Davis
+postharvest fact sheet). Do not change a source without a real reference.
 
 ## 3. Features (`core/salva_core/features.py`)
 

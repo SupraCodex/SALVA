@@ -1,0 +1,46 @@
+{
+  "dataset_id": "synth-g2.0.0-s42-8795c6c2",
+  "go_nogo": {
+    "criteria": {
+      "coverage_p10_p90": {
+        "note": "95% CI over lots [0.732, 0.791]; kinetic reference (perfect model) = 0.771",
+        "passed": true,
+        "rule": "in [0.76, 0.84]",
+        "value": 0.7614124965693898
+      },
+      "decision_agreement": {
+        "note": "",
+        "passed": true,
+        "rule": ">= 0.85",
+        "value": 0.945
+      },
+      "latency_ms_10k_rows": {
+        "note": "",
+        "passed": true,
+        "rule": "< 300 ms",
+        "value": 106.37158999998064
+      },
+      "monotonicity_violations": {
+        "note": "",
+        "passed": false,
+        "rule": "<= 0",
+        "value": 1440
+      },
+      "p50_fidelity_mae": {
+        "note": "",
+        "passed": true,
+        "rule": "< 0.03",
+        "value": 0.025472366802356577
+      }
+    },
+    "experimental_model": "LightGBM",
+    "production_model": "KineticModel",
+    "reasons": [
+      "monotonicity_violations: 1440 (required <= 0)"
+    ],
+    "verdict": "LIGHTGBM NO-GO"
+  },
+  "model_version": "lgbm-2.0.0-8795c6c2-s42",
+  "seed": 42,
+  "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc"
+}

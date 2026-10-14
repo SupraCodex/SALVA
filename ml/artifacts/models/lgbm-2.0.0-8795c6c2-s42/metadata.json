@@ -1,13 +1,47 @@
 {
   "DATA_TYPE": "SYNTHETIC",
-  "created_at_utc": "2026-10-09T10:03:23+00:00",
-  "dataset_hash": "83dd816d64d9ee39ae7e0783e697e7efecb85a918fd586fc6edc360dc92de9a3",
-  "dataset_id": "synth-g1.0.0-s42-83dd816d",
+  "calibration_ranges": {
+    "age_h": {
+      "max": 95.99944760006703,
+      "min": 0.0003144037631134145
+    },
+    "degree_hours_above_ref": {
+      "max": 2636.7805080774565,
+      "min": 0.0
+    },
+    "delay_h": {
+      "max": 36.0,
+      "min": 0.0
+    },
+    "exposure_h": {
+      "max": 228.0633495920767,
+      "min": 0.5158683150358043
+    },
+    "hold_h": {
+      "max": 47.999607292310436,
+      "min": 0.0
+    },
+    "remaining_transit_h": {
+      "max": 121.0876517284909,
+      "min": 0.0003120847857394941
+    },
+    "temp_max_c": {
+      "max": 49.063085214913364,
+      "min": 21.602055027812344
+    },
+    "temp_mean_c": {
+      "max": 33.99977321550749,
+      "min": 9.688928853215227
+    }
+  },
+  "created_at_utc": "2026-10-14T06:53:10+00:00",
+  "dataset_hash": "8795c6c2beee18e65773837b690d90dff19c30e948c3fa04ce646af3e895fdd8",
+  "dataset_id": "synth-g2.0.0-s42-8795c6c2",
   "dependencies": {
-    "lightgbm": "4.7.0",
-    "numpy": "2.4.4",
-    "pandas": "3.0.2",
-    "python": "3.12.3"
+    "lightgbm": "4.6.0",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "python": "3.13.16"
   },
   "feature_columns": [
     "age_h",
@@ -16,6 +50,7 @@
     "degree_hours_above_ref",
     "remaining_transit_h",
     "delay_h",
+    "hold_h",
     "exposure_h",
     "maturity",
     "packaging",
@@ -52,6 +87,7 @@
       "degree_hours_above_ref",
       "remaining_transit_h",
       "delay_h",
+      "hold_h",
       "exposure_h",
       "maturity",
       "packaging",
@@ -64,6 +100,7 @@
       "degree_hours_above_ref",
       "remaining_transit_h",
       "delay_h",
+      "hold_h",
       "exposure_h",
       "maturity"
     ],
@@ -74,16 +111,17 @@
       "degree_hours_above_ref",
       "remaining_transit_h",
       "delay_h",
+      "hold_h",
       "exposure_h"
     ],
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
-  "feature_schema_hash": "4b4e00408a2fb64cf35e1ea91029c24dbd080513a45adeb439e5924d33411093",
-  "feature_version": "1.0.0",
-  "git_commit": "dbfc9c71e136a69ba716c5f00689ec7b7c378b9c",
+  "feature_schema_hash": "f32eceadd7ed7b997c6a71dc67c768a4ddb0df825aeafec5c7d8d3bd232cbe98",
+  "feature_version": "2.0.0",
+  "git_commit": "ab08078adccb23f52939a40a70cc8ff9621488b1",
   "go_nogo": "LIGHTGBM NO-GO",
   "go_nogo_reasons": [
-    "decision_agreement: None (required >= 0.85) NOT EVALUATED: P1 engines not available yet (No module named 'salva_core.recommendation')"
+    "monotonicity_violations: 1440 (required <= 0)"
   ],
   "hyperparameters": {
     "early_stopping_rounds": 200,
@@ -96,56 +134,58 @@
     "num_leaves": 31,
     "seed": 42
   },
+  "loss_includes_chilling_penalty": true,
   "loss_model_contract": "salva_core.contracts.LossModel",
   "metrics": {
     "candidate_test": {
-      "coverage_p10_p90": 0.7693692072347701,
-      "mae_p50_vs_realised": 0.07706753526504254,
-      "n_lots": 500,
-      "n_rows": 11113,
+      "coverage_p10_p90": 0.7614124965693898,
+      "mae_p50_vs_realised": 0.07998625758352275,
+      "n_lots": 486,
+      "n_rows": 10931,
       "pinball": {
-        "0.05": 0.009601235128213158,
-        "0.10": 0.01622660999581306,
-        "0.25": 0.030912519242611347,
-        "0.50": 0.03853555926455669,
-        "0.75": 0.031247875381754626,
-        "0.90": 0.017496071409557636,
-        "0.95": 0.010352137759520262
+        "0.05": 0.010053421722453784,
+        "0.10": 0.017082452541901754,
+        "0.25": 0.03152772513767343,
+        "0.50": 0.039960413908663436,
+        "0.75": 0.03218335342130893,
+        "0.90": 0.01791156967251823,
+        "0.95": 0.01064054012727344
       },
-      "pinball_mean": 0.022053144026003828,
+      "pinball_mean": 0.022765639504541857,
       "quantile_order_violations": 0
     },
     "decision_agreement": {
-      "reason": "P1 engines not available yet (No module named 'salva_core.recommendation')",
-      "status": "NOT_EVALUATED"
+      "agreement": 0.945,
+      "n_scenarios": 200,
+      "status": "EVALUATED"
     },
     "fidelity_test": {
-      "mae_p10": 0.025578175625608175,
-      "mae_p50": 0.02346321196727021,
-      "mae_p90": 0.02164599831061751,
-      "max_abs_p50": 0.1769150472681411
+      "mae_p10": 0.027492619678565675,
+      "mae_p50": 0.025472366802356577,
+      "mae_p90": 0.02476741283848113,
+      "max_abs_p50": 0.21471637452256276
     },
     "latency": {
-      "max_ms": 251.76595300001736,
-      "median_ms": 214.88407599997572,
+      "max_ms": 117.73205600002257,
+      "median_ms": 106.37158999998064,
       "n_rows": 10000
     },
     "monotonicity": {
       "by_perturbation": {
-        "diurnal_amplitude": 0,
-        "exposure_age": 0,
+        "diurnal_amplitude": 508,
+        "exposure_age": 393,
         "maturity": 0,
-        "temperature": 0,
-        "transit": 0
+        "temperature": 368,
+        "transit": 171
       },
       "n_rows": 2000,
-      "total_violations": 0
+      "total_violations": 1440
     }
   },
   "model_type": "lightgbm-quantile",
-  "model_version": "lgbm-1.0.0-83dd816d-s42",
+  "model_version": "lgbm-2.0.0-8795c6c2-s42",
   "product": "tomato",
-  "products_yaml_sha256": "49b7c5bd4a18a64f0aa6c0de7cbb3067e969b0c286228f6b2ea102ffed16686a",
+  "products_yaml_sha256": "7351d836eaa742191b776199e1f4b36206529f8589fd3f89357ea627f38057ae",
   "quantiles": [
     0.05,
     0.1,

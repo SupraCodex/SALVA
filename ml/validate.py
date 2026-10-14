@@ -23,6 +23,16 @@ from salva_core.params import ProductParams, load_product
 
 from .config import load_config, write_json
 from .generate import HIDDEN_COLUMNS, TARGET
+
+RAW_INPUTS = (
+    "hidden_u",
+    "hidden_temp_air_c",
+    "hidden_diurnal_amp_c",
+    "hidden_temp_shock_c",
+    "hidden_transit_factor",
+    "hidden_remaining_h",
+    "hidden_temp_offset_c",
+)
 from .io_utils import load_dataset
 
 
@@ -94,17 +104,21 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
     for c in ("age_h", "remaining_transit_h", "delay_h", "exposure_h", "degree_hours_above_ref"):
         if (df[c].to_numpy(float) < 0).any():
             rep.errors.append(f"{c}: negative values")
-    age, rem, _delay, expo = (df[c].to_numpy(float) for c in ("age_h", "remaining_transit_h", "delay_h", "exposure_h"))
-    if not np.allclose(expo, age + rem, atol=1e-6):
-        rep.errors.append("exposure_h != age_h + remaining_transit_h")
+    age, rem, hold, expo = (
+        df[c].to_numpy(float) for c in ("age_h", "remaining_transit_h", "hold_h", "exposure_h")
+    )
+    if not np.allclose(expo, age + rem + hold, atol=1e-6):
+        rep.errors.append("exposure_h != age_h + remaining_transit_h + hold_h")
     t_mean, t_max = df["temp_mean_c"].to_numpy(float), df["temp_max_c"].to_numpy(float)
     if (t_max < t_mean - 1e-9).any():
         rep.errors.append("temp_max_c < temp_mean_c")
     if (t_mean < -20).any() or (t_mean > 60).any():
         rep.errors.append("temp_mean_c outside the physically plausible range [-20, 60] degC")
-    dh = np.maximum(t_mean - params.t_ref_c, 0.0) * expo
-    if not np.allclose(df["degree_hours_above_ref"].to_numpy(float), dh, rtol=1e-6, atol=1e-6):
-        rep.errors.append("degree_hours_above_ref inconsistent with temp_mean_c and exposure_h")
+    # Degree-hours are integrated per phase (history, transit, storage), so they are bounded
+    # by the hottest phase. The exact values are re-derived below from the raw inputs.
+    dh = df["degree_hours_above_ref"].to_numpy(float)
+    if (dh > np.maximum(t_max - params.t_ref_c, 0.0) * expo + 1e-6).any():
+        rep.errors.append("degree_hours_above_ref inconsistent with temp_max_c and exposure_h")
 
     for col, allowed in (("maturity", params.maturity), ("packaging", params.pack_delta_c),
                          ("storage_mode", params.storage_temp_offset_c)):
@@ -114,17 +128,39 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
     if rep.errors:
         return rep
 
-    # labels must be reproducible from the single implementation of the equations
-    if "hidden_u" in df:
-        f = F.from_arrays({c: df[c] for c in F.MODEL_COLUMNS}, params.name)
-        recomputed = KineticLossModel(params).sample_loss(f, df["hidden_u"].to_numpy(float))
-        err = float(np.max(np.abs(recomputed - loss)))
+    # features and labels must be reproducible from the single implementation in salva_core
+    if all(c in df for c in RAW_INPUTS):
+        f = F.assemble(
+            params,
+            maturity=df["maturity"].to_numpy(dtype=object),
+            packaging=df["packaging"].to_numpy(dtype=object),
+            age_h=age,
+            remaining_h=df["hidden_remaining_h"].to_numpy(float),
+            temp_air_c=df["hidden_temp_air_c"].to_numpy(float),
+            delay_h=df["delay_h"].to_numpy(float),
+            diurnal_amp_c=df["hidden_diurnal_amp_c"].to_numpy(float),
+            temp_shock_c=df["hidden_temp_shock_c"].to_numpy(float),
+            transit_factor=df["hidden_transit_factor"].to_numpy(float),
+            hold_h=hold,
+            temp_offset_c=df["hidden_temp_offset_c"].to_numpy(float),
+            storage_mode=df["storage_mode"].to_numpy(dtype=object),
+            product=params.name,
+        )
+        feature_err = max(
+            float(np.max(np.abs(np.asarray(getattr(f, c), dtype=float) - df[c].to_numpy(float))))
+            for c in F.NUMERIC_FEATURES
+        )
+        rep.stats["max_feature_recompute_error"] = feature_err
+        if feature_err > 1e-9:
+            rep.errors.append(f"features do not match salva_core.features (max abs diff {feature_err:.3g})")
+        k_lot = KineticLossModel(params).lot_multiplier(df["hidden_u"].to_numpy(float))
+        _, recomputed = kinetics.quality_and_loss(f, k_lot, params)
+        err = float(np.max(np.abs(np.asarray(recomputed) - loss)))
         rep.stats["max_label_recompute_error"] = err
         if err > 1e-9:
             rep.errors.append(f"labels do not match kinetics.py (max abs diff {err:.3g})")
-        _ = kinetics  # imported to make the dependency explicit
     else:
-        rep.warnings.append("hidden_u absent: label reproducibility not checked")
+        rep.warnings.append("raw generator inputs absent: feature and label reproducibility not checked")
 
     # distributions
     rep.stats.update({

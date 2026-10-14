@@ -1,7 +1,7 @@
 """Official go/no-go criterion: agreement of the RECOMMENDED ACTION (LightGBM vs kinetic).
 
-This needs the simulation and recommendation engines of P1, which P3 does not implement.
-The adapter below calls them through the signatures of the coding guide:
+The simulation and recommendation engines live in salva_core (simulation, recommendation).
+The adapter below calls them through their stable signatures:
 
     salva_core.simulation.uncertainty.draw(n, seed)               -> Shocks
     salva_core.simulation.engine.run_all(model, lot, options, S, p) -> list[result]
@@ -45,9 +45,10 @@ def make_scenarios(params: ProductParams, n: int, seed: int) -> list[Scenario]:
         mode = "ventilated"
         opts = [
             Option(f"s{i}-continue", "continue", kg, main),
-            Option(f"s{i}-reroute", "reroute", kg, alt, extra_h=float(rng.uniform(4, 16)), cost=15.0 * kg),
-            Option(f"s{i}-store", "store", min(kg, 200.0), main, extra_h=24.0, is_store=True,
-                   storage_mode=mode, temp_offset=params.storage_offset(mode), cost=5.0 * kg),
+            # Option.cost is in FCFA per physical kg (core contract).
+            Option(f"s{i}-reroute", "reroute", kg, alt, extra_h=float(rng.uniform(4, 16)), cost=15.0),
+            Option(f"s{i}-store", "store", kg, main, is_store=True, storage_mode=mode, hold_h=24.0,
+                   temp_offset=params.storage_offset(mode), storage_capacity_kg=200.0, cost=5.0),
             Option(f"s{i}-local", "sell_local", kg, local),
         ]
         out.append((lot, opts))

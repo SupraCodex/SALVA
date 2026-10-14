@@ -12,45 +12,88 @@ from __future__ import annotations
 
 import numpy as np
 
+from .. import kinetics
 from ..contracts import ConditionFeatures, LossModel
 from ..features import n_rows, with_changes
 from ..params import ProductParams
 
-FACTOR_NAMES = ("temperature", "age", "transit", "delay", "maturity", "packaging")
+FACTOR_NAMES = (
+    "temperature",
+    "age",
+    "transit",
+    "delay",
+    "maturity",
+    "packaging",
+    "storage",
+    "chilling",
+)
 
 
 def _benign_packaging(p: ProductParams) -> str:
     return min(p.pack_damage, key=lambda k: (p.pack_damage[k], p.pack_delta_c[k]))
 
 
-def counterfactuals(f: ConditionFeatures, p: ProductParams) -> dict[str, ConditionFeatures]:
+def counterfactuals(
+    f: ConditionFeatures, p: ProductParams
+) -> dict[str, ConditionFeatures]:
+    """Build one benign counterfactual per interpretable risk factor."""
     delay = np.asarray(f.delay_h, dtype=float)
     remaining = np.asarray(f.remaining_transit_h, dtype=float)
     delay_in_transit = np.minimum(delay, remaining)
     return {
         "temperature": with_changes(f, p, temp_mean_c=p.t_ref_c, diurnal_amp_c=0.0),
         "age": with_changes(f, p, age_h=0.0),
-        "transit": with_changes(f, p, remaining_transit_h=delay_in_transit),
-        "delay": with_changes(f, p, remaining_transit_h=remaining - delay_in_transit, delay_h=0.0),
+        "transit": with_changes(
+            f,
+            p,
+            remaining_transit_h=delay_in_transit,
+            delay_h=delay_in_transit,
+        ),
+        "delay": with_changes(
+            f, p, remaining_transit_h=remaining - delay_in_transit, delay_h=0.0
+        ),
         "maturity": with_changes(f, p, maturity=p.maturity_order[0]),
         "packaging": with_changes(f, p, packaging=_benign_packaging(p)),
+        "storage": with_changes(f, p, hold_h=0.0, storage_mode="none"),
     }
 
 
-def contributions(model: LossModel, f: ConditionFeatures, p: ProductParams) -> dict[str, np.ndarray]:
+def contributions(
+    model: LossModel, f: ConditionFeatures, p: ProductParams
+) -> dict[str, np.ndarray]:
     """P50-loss reduction obtained by neutralising each factor (array per row)."""
     base = np.asarray(model.predict(f).p50, dtype=float)
     out = {}
     for name, cf in counterfactuals(f, p).items():
         out[name] = base - np.asarray(model.predict(cf).p50, dtype=float)
+    injury = np.asarray(
+        kinetics.chilling_loss_fraction_from_dose(
+            kinetics.chilling_equivalent_exposure_h(f, p), f.maturity, p
+        ),
+        dtype=float,
+    )
+    without_chilling = np.divide(
+        base - injury,
+        1.0 - injury,
+        out=np.zeros_like(base, dtype=float),
+        where=injury < 1.0,
+    )
+    out["chilling"] = base - np.clip(without_chilling, 0.0, 1.0)
     return out
 
 
-def explain(model: LossModel, f: ConditionFeatures, p: ProductParams, top: int = 4,
-            min_contribution: float = 1e-3) -> list[tuple[str, float]]:
+def explain(
+    model: LossModel,
+    f: ConditionFeatures,
+    p: ProductParams,
+    top: int = 4,
+    min_contribution: float = 1e-3,
+) -> list[tuple[str, float]]:
     """Top factors for ONE row, sorted by decreasing contribution (loss-fraction units)."""
     if n_rows(f) != 1:
-        raise ValueError("explain() expects a single row; use contributions() for arrays")
+        raise ValueError(
+            "explain() expects a single row; use contributions() for arrays"
+        )
     contrib = {k: float(np.ravel(v)[0]) for k, v in contributions(model, f, p).items()}
     ranked = sorted(contrib.items(), key=lambda kv: kv[1], reverse=True)
     return [(k, v) for k, v in ranked if v >= min_contribution][:top]

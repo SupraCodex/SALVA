@@ -135,11 +135,11 @@ def test_decision_agreement_with_injected_engine():
     assert DA.compute(k, k, p, n_scenarios=10, seed=1, decide=alternating)["agreement"] == 0.0
 
 
-def test_decision_agreement_unavailable_without_p1_engine():
+def test_decision_agreement_uses_the_core_engines():
     p = load_product("tomato")
     k = KineticLossModel(p)
-    with pytest.raises(DA.DecisionUnavailable):
-        DA.compute(k, k, p, n_scenarios=3, seed=1)
+    out = DA.compute(k, k, p, n_scenarios=3, seed=1)
+    assert out == {"status": "EVALUATED", "agreement": 1.0, "n_scenarios": 3}
 
 
 def test_scenarios_are_deterministic_and_valid():

@@ -1,5 +1,5 @@
 {
-  "experimental": "lgbm-1.0.0-83dd816d-s42",
+  "experimental": "lgbm-2.0.0-8795c6c2-s42",
   "production": "kinetic",
   "verdict": "LIGHTGBM NO-GO"
 }
