@@ -29,6 +29,8 @@ const options = {
   bundle: true,
   outdir: join(out, "assets"),
   entryNames: "[name]-[hash]",
+  assetNames: "[name]-[hash]",
+  loader: { ".woff": "file" },
   format: "esm",
   target: ["es2020", "chrome90", "firefox90", "safari15"],
   minify: !watch,

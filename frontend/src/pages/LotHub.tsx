@@ -163,20 +163,38 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
     <div className="page">
       <Link to="/" className="back-link">{t("hub.back")}</Link>
       <header className="lot-head">
-        <div>
+        <div className="lot-head__top">
           <h1 className="lot-head__title">
             {t(`lot.product.${lot.product_code}` as "lot.product.tomato")} · {kg(lot.quantity_kg, lang)}
           </h1>
-          <p className="lot-head__route">
-            {t("lot.route", { from: lot.origin_label, to: `${lot.destination_name} (${lot.destination_city})` })}
-          </p>
-          <p className="muted small">
-            {t("hub.harvest", { date: dateTime(lot.harvested_at, lang) })} — {t(`lot.maturity.${lot.maturity}`)},{" "}
-            {t(`lot.packaging.${lot.packaging}`).toLowerCase()} — {t("hub.arrival", { date: dateTime(lot.eta_current_at, lang) })}
-            {lot.delay_h > 0 ? ` (${t("lot.delay", { h: hours(lot.delay_h, lang) })})` : ""}
-          </p>
+          <span className={`status status--${lot.status}`}>{t(`lot.status.${lot.status}`)}</span>
         </div>
-        <span className={`status status--${lot.status}`}>{t(`lot.status.${lot.status}`)}</span>
+        <p className="lot-head__route">
+          <span>{lot.origin_label}</span>
+          <span className="lot-head__arrow" aria-hidden="true">→</span>
+          <span>
+            {lot.destination_name} ({lot.destination_city})
+          </span>
+        </p>
+        <dl className="lot-head__facts">
+          <div>
+            <dt>{t("hub.factHarvest")}</dt>
+            <dd>{dateTime(lot.harvested_at, lang)}</dd>
+          </div>
+          <div>
+            <dt>{t("hub.factState")}</dt>
+            <dd>
+              {t(`lot.maturity.${lot.maturity}`)}, {t(`lot.packaging.${lot.packaging}`).toLowerCase()}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("hub.factArrival")}</dt>
+            <dd>
+              {dateTime(lot.eta_current_at, lang)}
+              {lot.delay_h > 0 && <span className="lot-head__delay">{t("lot.delay", { h: hours(lot.delay_h, lang) })}</span>}
+            </dd>
+          </div>
+        </dl>
       </header>
       <EditLot lot={lot} onSaved={lotState.reload} />
       {lot.status === "closed" && <Notice>{t("hub.closed")}</Notice>}

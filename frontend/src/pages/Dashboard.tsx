@@ -59,7 +59,8 @@ export function Dashboard() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [moreError, setMoreError] = useState<string | null>(null);
 
-  const items = [...(list.data?.items ?? []), ...extra];
+  const rank = (l: Lot) => (l.status === "open" ? 0 : 1) * 10 + ({ high: 0, medium: 1, low: 2 }[l.latest_analysis?.risk_level ?? "low"] ?? 3);
+  const items = [...(list.data?.items ?? []), ...extra].sort((a, b) => rank(a) - rank(b));
   const next = extra.length ? cursor : (list.data?.next_cursor ?? null);
   const atRisk = items.filter((l) => l.status === "open" && l.latest_analysis?.risk_level === "high");
 
@@ -82,7 +83,12 @@ export function Dashboard() {
   return (
     <div className="page">
       <div className="page__head">
-        <h1>{t("dash.title")}</h1>
+        <div>
+          <h1>{t("dash.title")}</h1>
+          {list.data && items.length > 0 && !filter && (
+            <p className="muted">{t("dash.summary", { n: items.length, k: atRisk.length })}</p>
+          )}
+        </div>
         <Link to="/lots/new" className="button button--primary">
           {t("dash.new")}
         </Link>
@@ -105,12 +111,6 @@ export function Dashboard() {
         >
           <p>{t("dash.emptyText")}</p>
         </EmptyState>
-      )}
-      {atRisk.length > 0 && !filter && (
-        <section className="section">
-          <h2>{t("dash.atRisk")}</h2>
-          <ul className="lot-list">{atRisk.map((lot) => <LotRow key={lot.id} lot={lot} />)}</ul>
-        </section>
       )}
       {(items.length > 0 || filter) && (
         <section className="section">
