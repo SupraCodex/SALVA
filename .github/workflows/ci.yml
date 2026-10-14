@@ -154,7 +154,9 @@ jobs:
         run: |
           {
             echo "JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+            echo "ENV=production"
             echo "COOKIE_SECURE=false"
+            echo "ALLOWED_ORIGINS=http://localhost:8000,https://salva.example.org"
             echo "WEATHER_ENABLED=false"
             echo "SEED_DEMO=true"
             echo "DEMO_USER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(16))')"
@@ -168,6 +170,13 @@ jobs:
           done
           curl -fs http://localhost:8000/api/v1/health | grep '"database":"up"'
           curl -fs http://localhost:8000/ | grep -q '<div id="root">'
+          curl -fs http://localhost:8000/api/v1/health/live
+      - name: The experimental LightGBM package loads in the image
+        run: >-
+          docker compose exec -T app python -c "import json, pathlib;
+          from salva_core.loss_model.lgbm_model import LightGbmLossModel;
+          name = json.loads(pathlib.Path('/app/ml/artifacts/active.json').read_text())['experimental'];
+          print(LightGbmLossModel.load(f'/app/ml/artifacts/models/{name}').version)"
       - if: always()
         run: docker compose logs app | tail -100
       - if: always()

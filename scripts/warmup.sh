@@ -7,7 +7,7 @@ BASE_URL="${1:-http://localhost:8000}"
 
 echo "Waiting for ${BASE_URL}/api/v1/health ..."
 for i in $(seq 1 60); do
-  if curl -fsS --max-time 3 "${BASE_URL}/api/v1/health" >/dev/null 2>&1; then
+  if curl -fsS --max-time 3 "${BASE_URL}/api/v1/health/live" >/dev/null 2>&1; then
     echo "  server is up (try ${i})"
     break
   fi
