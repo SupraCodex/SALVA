@@ -69,6 +69,9 @@ class Option:
     storage_cost_fcfa_kg_day: float = 0.0  # storage tariff, FCFA per physical kg-day
     transport_distance_km: float = 0.0
     transport_cost_fcfa_kg_km: float = 0.0
+    transit_saving_h: float = (
+        0.0  # planned transit avoided (closer market); never cuts the delay
+    )
 
 
 @dataclass(frozen=True)

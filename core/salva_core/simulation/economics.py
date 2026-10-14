@@ -9,7 +9,13 @@ from math import isfinite
 import numpy as np
 
 from ..contracts import LossDistribution, Lot, Option, Shocks
-from ..features import assemble, build, option_durations, out_of_range_features
+from ..features import (
+    assemble,
+    build,
+    option_durations,
+    out_of_range_features,
+    route_remaining_h,
+)
 from ..params import ProductParams
 from ..risk import classify_risk
 from .models import AllocationPlan, ScenarioResult
@@ -84,6 +90,7 @@ def validate_option(lot: Lot, option: Option) -> None:
         )
     _finite_nonnegative(option.cost, f"option {option.id}.cost")
     _finite_nonnegative(option.extra_h, f"option {option.id}.extra_h")
+    _finite_nonnegative(option.transit_saving_h, f"option {option.id}.transit_saving_h")
     if option.hold_h is not None:
         if isinstance(option.hold_h, (bool, np.bool_)):
             raise EconomicsError(
@@ -174,7 +181,7 @@ def option_draws(
         maturity=lot.maturity,
         packaging=lot.packaging,
         age_h=lot.age_h,
-        remaining_h=lot.remaining_h,
+        remaining_h=route_remaining_h(lot, option),
         temp_air_c=lot.temp_c,
         delay_h=lot.delay_h,
         diurnal_amp_c=lot.diurnal_amp_c,
@@ -510,13 +517,13 @@ def evaluate(
             infeasible_reason=reason,
             discouraged=(
                 od.remaining_shelf_life_p50_h is not None
-                and lot.remaining_h + sum(option_durations(option))
+                and route_remaining_h(lot, option) + sum(option_durations(option))
                 > od.remaining_shelf_life_p50_h + 1e-9
             ),
             discouraged_reason=(
                 "SHELF_LIFE_P50_EXCEEDED"
                 if od.remaining_shelf_life_p50_h is not None
-                and lot.remaining_h + sum(option_durations(option))
+                and route_remaining_h(lot, option) + sum(option_durations(option))
                 > od.remaining_shelf_life_p50_h + 1e-9
                 else None
             ),

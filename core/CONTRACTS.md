@@ -52,6 +52,7 @@ relative score gap is measured against that nominal lot reference, as required b
 | `extra_h` | Additional transit/detour hours | For a legacy storage Option with `hold_h=None`, this is still interpreted as the storage hold. |
 | `hold_h` | Explicit storage hold duration in hours | New storage Options should set this field; it is excluded from stochastic transit multipliers. |
 | `temp_offset` | Storage temperature adjustment in °C | Set from `ProductParams.storage_offset(storage_mode)`; it affects only the storage phase. |
+| `transit_saving_h` | Planned transit hours avoided by this route (a market closer than the planned destination) | Non-negative. The route's remaining transit is `max(lot.delay_h, lot.remaining_h - transit_saving_h)`: the delay already incurred is never removed. Used by the backend for `sell_local` and for reroutes to closer markets. |
 
 These fields were appended with defaults, so existing positional Option constructors remain
 valid. They are nevertheless a contract change and are not considered accepted by P3 until

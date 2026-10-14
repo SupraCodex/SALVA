@@ -302,6 +302,7 @@ _OPTION_FIELDS = frozenset(
         "storage_cost_fcfa_kg_day",
         "transport_distance_km",
         "transport_cost_fcfa_kg_km",
+        "transit_saving_h",
     }
 )
 
@@ -498,6 +499,8 @@ def _apply_parameter(
                 varied.append(replace(option, kg=value))
             elif field_name == "extra_h":
                 varied.append(replace(option, extra_h=value))
+            elif field_name == "transit_saving_h":
+                varied.append(replace(option, transit_saving_h=value))
             elif field_name == "hold_h":
                 varied.append(replace(option, hold_h=value))
             elif field_name == "temp_offset":

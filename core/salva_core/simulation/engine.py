@@ -8,7 +8,7 @@ from dataclasses import replace
 import numpy as np
 
 from ..contracts import Lot, Option, Shocks
-from ..features import option_durations
+from ..features import option_durations, route_remaining_h
 from ..params import ProductParams
 from .allocation import optimize
 from .economics import evaluate_portfolio, option_draws, validate_option
@@ -86,7 +86,7 @@ def run_all(
         draws_by_id[option.id] = option_draw
         shelf_life_exceeded = (
             option_draw.remaining_shelf_life_p50_h is not None
-            and lot.remaining_h + detour_h + hold_h
+            and route_remaining_h(lot, option) + detour_h + hold_h
             > option_draw.remaining_shelf_life_p50_h + 1e-9
         )
         if not shelf_life_exceeded:

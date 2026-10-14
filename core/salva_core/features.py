@@ -294,6 +294,19 @@ def option_durations(opt: Option) -> tuple[float, float]:
     return float(opt.extra_h), float(opt.hold_h)
 
 
+def route_remaining_h(lot: Lot, opt: Option) -> float:
+    """Remaining transit hours of ``lot`` on the route of ``opt`` (before detours and hold).
+
+    ``Option.transit_saving_h`` models a market closer than the planned destination: the
+    planned part of the journey shrinks, but never below the delay already incurred, which
+    the lot still carries whichever market it is sold at.
+    """
+    saving = float(opt.transit_saving_h)
+    if saving <= 0.0:
+        return float(lot.remaining_h)
+    return max(float(lot.delay_h), float(lot.remaining_h) - saving)
+
+
 def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionFeatures:
     """Features of ``opt`` applied to ``lot`` under the draws ``shocks`` (called by P1)."""
     detour_h, hold_h = option_durations(opt)
@@ -302,7 +315,7 @@ def build(lot: Lot, opt: Option, shocks: Shocks, p: ProductParams) -> ConditionF
         maturity=lot.maturity,
         packaging=lot.packaging,
         age_h=lot.age_h,
-        remaining_h=lot.remaining_h,
+        remaining_h=route_remaining_h(lot, opt),
         temp_air_c=lot.temp_c,
         delay_h=lot.delay_h,
         diurnal_amp_c=lot.diurnal_amp_c,

@@ -290,3 +290,70 @@ def test_recommendation_rejects_nonfinite_net_quantiles():
 def test_invalid_policy_is_rejected():
     with pytest.raises(ValueError, match="lam"):
         Policy(lam=1.5)
+
+
+def test_transit_saving_shortens_route_but_keeps_delay():
+    """A closer market shortens the planned journey, never the delay already incurred."""
+    from dataclasses import replace
+
+    from salva_core.contracts import Lot, Market, Option
+    from salva_core.features import route_remaining_h
+    from salva_core.loss_model import KineticLossModel
+    from salva_core.params import load_product
+    from salva_core.simulation import draw, run_all
+
+    params = load_product()
+    lot = Lot(
+        kg=500,
+        maturity="breaker",
+        packaging="crate",
+        age_h=48,
+        remaining_h=20,
+        temp_c=29,
+        delay_h=12,
+    )
+    market = Market(1, "near", 500.0, 10_000.0)
+    far = Option("continue", "continue", 500, market)
+    near = replace(far, id="sell_local", action="sell_local", transit_saving_h=6.0)
+    assert route_remaining_h(lot, far) == 20
+    assert route_remaining_h(lot, near) == 14
+    assert route_remaining_h(lot, replace(near, transit_saving_h=50.0)) == 12
+
+    results = {
+        r.id: r
+        for r in run_all(
+            KineticLossModel(params),
+            lot,
+            [far, near],
+            draw(1000, 3),
+            params,
+            include_allocation=False,
+        )
+    }
+    # Same market and price: the shorter route cannot lose more value.
+    assert results["sell_local"].loss_p50 <= results["continue"].loss_p50
+    assert results["sell_local"].net_p50 >= results["continue"].net_p50
+
+
+def test_negative_transit_saving_is_rejected():
+    import pytest
+    from salva_core.contracts import Lot, Market, Option
+    from salva_core.loss_model import KineticLossModel
+    from salva_core.params import load_product
+    from salva_core.simulation import draw, run_all
+    from salva_core.simulation.economics import EconomicsError
+
+    params = load_product()
+    lot = Lot(
+        kg=100,
+        maturity="breaker",
+        packaging="crate",
+        age_h=10,
+        remaining_h=10,
+        temp_c=25,
+    )
+    bad = Option(
+        "x", "continue", 100, Market(1, "m", 500.0, 1000.0), transit_saving_h=-1.0
+    )
+    with pytest.raises(EconomicsError):
+        run_all(KineticLossModel(params), lot, [bad], draw(1000, 1), params)
