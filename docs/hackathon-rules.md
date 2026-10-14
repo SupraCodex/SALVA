@@ -17,15 +17,19 @@ Source officielle : <https://learn-ai-basics.devpost.com/rules> (consultée le 9
 - Le second stade pondère également quatre critères : design, impact potentiel, innovation/idéation et présentation.
 - La période d’inscription et de soumission se termine le 26 octobre 2026 à 17 h, heure de l’Est.
 
-## Conséquence pour cette branche
+## État dans le dépôt (version intégrée)
 
-`core/` reste une bibliothèque scientifique Python pure et ne prétend pas satisfaire seul les
-exigences de soumission au niveau projet. Les fichiers Devpost, la vidéo, la licence globale,
-l’intégration backend/frontend et la démonstration doivent être vérifiés et finalisés par
-l’équipe d’intégration. Cette séparation évite de fabriquer dans core des artefacts de hackathon
-qui ne seraient pas la source de vérité du produit.
+| Exigence | État |
+|---|---|
+| Dépôt public, licence open source détectable | Licence MIT à la racine ; vérifier la visibilité publique avant de soumettre |
+| Instructions d’installation | `README.md`, `docs/runbook.md`, `docker compose up` |
+| `devpost/scope.md`, `prd.md`, `spec.md` | Présents, statut `draft` : consolidés depuis le document de conception, à relire et approuver par l’équipe avec le Skill Pack |
+| Projet fonctionnel de bout en bout | Parcours complet vérifié en local dans un navigateur (tests e2e) |
+| Travail préexistant divulgué | Premier commit le 8 octobre 2026, document de conception du 5 octobre 2026 : tout est dans la période ; bibliothèques open source sous leurs licences |
+| Vidéo publique de moins de 3 minutes, en anglais | À enregistrer (plan : `docs/demo-script.md`) |
+| Description, champs du formulaire, questionnaire de sortie | À rédiger par l’équipe (exigence du Skill Pack) ; faits vérifiés dans `devpost/submission-facts.md` |
+| Accès gratuit pour les juges | Déploiement à faire par l’équipe, ou vidéo + exécution locale |
 
-Le dépôt officiel `challengepost/learn-ai-basics` décrit les sorties de compétences sous
-`devpost/` (`scope.md`, `prd.md`, `spec.md`) et précise que la soumission et les réponses au
-questionnaire de sortie sont rédigées par les participants. Cette branche ne crée aucun de ces
-documents et ne les présente pas comme achevés.
+Le dépôt officiel `challengepost/learn-ai-basics` précise que la soumission et les réponses au
+questionnaire de sortie sont rédigées par les participants : aucun texte de soumission n’est
+donc fourni ici, seulement des faits vérifiés.

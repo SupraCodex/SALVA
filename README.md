@@ -1,24 +1,90 @@
-# SALVA 
-## (Spoilage-Aware Logistic & Value Allocation)
-Intelligent decision support system for perishable products: anticipating loss risk, simulating interventions, and maximizing value recovery. 
-Developed by the entire **supra-codex-Hack** team for the Devpost hackathon, with the final submission scheduled for Friday, October 13, at 8:00 PM (Cameroon time).
+# SALVA — Spoilage-Aware Logistics & Value Allocation
 
----
+Decision support for perishable produce in transit. From a handful of inputs about a lot of
+tomatoes, SALVA estimates how much commercial value is likely to be lost before sale, simulates
+the realistic decisions (continue, store, reroute to another market, sell locally, or split the
+lot), recommends the one that recovers the most value with its uncertainty, and explains the
+result in plain French or English without being able to invent a number.
 
-## ⚠️ Problems
-Agriculture in Cameroon—often described as the engine of the national economy—is characterized by its great crop diversity and its significant social importance. It accounts for approximately 17% to 20% of the country's Gross Domestic Product, with a total market value estimated at over US$10 billion. Unfortunately, despite these substantial figures, an additional US$4 billion in direct value could have been realized. Regarding tomato farming specifically, annual production stands at around 1,200,000 tonnes; however, losses range from 30% to 50%—equating to a loss of 360,000 to 600,000 tonnes of tomatoes per year. If this lost produce were salvaged, urban markets would enjoy a stable supply, and local processing plants would gain access to thousands of tonnes of raw material for producing local tomato paste, thereby saving foreign currency on imports.
+> **Model-based estimate, not validated on field data.** Training data are synthetic (generated
+> by a kinetic model) and parameters are literature ranges or assumptions. See
+> [docs/model-card.md](docs/model-card.md).
 
----
+Built for the Devpost hackathon *Build With AI: Basics* by the SupraCodex team.
 
-## 🎯 Solutions
-This is the context in which our solution, `SALVA`, operates. We present a decision-support system for stakeholders handling perishable products (producers, cooperatives, etc.). Based on a small amount of data entered quickly—and often automatically supplemented when available—the system:
-*   Estimates the risk of value loss: going beyond the simple expiration date, and doing so even before the batch arrives.
-*   Simulates various realistic decisions: continuing, storing, redirecting to another market, selling on-site, or even splitting batches. These are among the decisions it proposes.
-*   Compares: decisions based on recoverable quantity and net value, while incorporating uncertainty intervals.
-*   Recommends: the optimal option aimed at maximizing recovered value, while transparently indicating when no single option stands out.
-*   Explains results in plain language: avoiding hallucinations and data fabrication.
+## What it does
 
-*   ---
+1. **Lot entry** (8 inputs): product, quantity, harvest time, maturity, packaging, departure,
+   destination market, planned arrival and delay. Weather along the route (Open-Meteo), route
+   distance and duration, and the reference price are filled in automatically, each value
+   labelled with its source.
+2. **Risk**: likely loss of value as a range (P10-P90) with a central value, a risk level, the
+   main contributing factors and an estimated remaining shelf life. Analyses can be replayed at a
+   past date.
+3. **Decisions**: every feasible option is simulated 2,000 times; unavailable options keep their
+   reason. Results are compared on net value in FCFA with their range and the probability of
+   being the best option. An optimized split respects storage capacity and market absorption.
+   Assumptions (prices, absorption, costs, storage duration) can be edited and the simulation
+   rerun; a temperature x delay grid shows where the recommendation would change.
+4. **Recommendation and explanation**: the best option for the chosen risk profile, its
+   confidence, an explicit "no clear winner" or "least bad option" when relevant, and a checked
+   explanation (template by default; Gemini or an OpenAI-compatible model if configured, with
+   every number verified against the computed facts).
+5. **Follow-up**: record the decision taken and the real result; history per lot.
 
-*   ## ⚙️ Principe de fonctionnement
-*   `La suite sera complete pendant l'evolution du projet`
+Also: organizations with administrator and operator roles, storage sites, an assumptions page
+listing every parameter with its source and the known limits, French and English interface,
+usable on a 360 px wide phone.
+
+## Quick start
+
+```bash
+cp .env.example .env              # set JWT_SECRET; SEED_DEMO=true for the demo workspace
+docker compose up --build         # http://localhost:8000
+```
+
+Without Docker (Python 3.11+, Node 20+, PostgreSQL 16): see [docs/runbook.md](docs/runbook.md)
+(`make install`, `make demo`, `make run`).
+
+Demo walkthrough and video plan: [docs/demo-script.md](docs/demo-script.md).
+
+## Repository layout
+
+| Path | Content |
+|---|---|
+| `core/` | Pure Python science library: kinetics, features, loss models, Monte Carlo simulation, allocation, recommendation, sensitivity |
+| `backend/` | FastAPI application, PostgreSQL models and migrations, enrichment, explanation layer, tests |
+| `frontend/` | React + TypeScript interface (esbuild), served by the backend |
+| `ml/` | Offline pipeline: synthetic data, validation, training, evaluation with a GO/NO-GO gate, packaging |
+| `data/reference/` | Product parameters, locations, markets, distances (with sources and assumption notes) |
+| `e2e/` | Browser scenarios (Playwright) |
+| `docs/` | Architecture, model card, security, runbook, decisions, traceability, hackathon rules |
+| `devpost/` | Skill Pack planning documents (scope, PRD, spec) |
+
+## Quality
+
+- Tests: `make test` (core, ml, backend on PostgreSQL, frontend unit tests) and `make e2e`
+  (browser scenarios against a running server).
+- CI (`.github/workflows/ci.yml`): lint and types, all test suites, frontend build, browser
+  scenarios on PostgreSQL, secret scan of the history and dependency audit.
+- Security measures and known gaps: [docs/security.md](docs/security.md).
+
+## Limits
+
+- No field validation yet; the validation plan is in the model card.
+- One product (tomato) and one corridor (West region to Douala and Yaounde) in the reference data.
+- The truck's live position is unknown: detours are computed from the departure place.
+- Live calls to weather, routing and language-model services depend on network access and keys;
+  everything degrades to labelled defaults or the template explanation.
+
+## Hackathon compliance
+
+Rules checked on the official page: [docs/hackathon-rules.md](docs/hackathon-rules.md). The
+project was started during the submission period (first commit 8 October 2026). Third-party
+components are open-source libraries used under their licenses (see each package manifest);
+external services: Open-Meteo (weather), optionally OSRM (routing) and Google Gemini or an
+OpenAI-compatible API (explanations).
+
+## License
+
+[MIT](LICENSE)
