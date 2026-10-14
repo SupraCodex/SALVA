@@ -55,6 +55,8 @@ def package(run_dir: Path | str, report_dir: Path | str, out_root: Path | str | 
         "products_yaml_sha256": log["products_yaml_sha256"],
         "feature_version": F.FEATURE_VERSION, "feature_schema_hash": F.schema_hash(),
         "feature_columns": list(F.MODEL_COLUMNS), "feature_schema": F.feature_schema(),
+        "loss_includes_chilling_penalty": bool(log.get("loss_includes_chilling_penalty", False)),
+        "calibration_ranges": log.get("calibration_ranges", {}),
         "metrics": {k: report["metrics"][k] for k in ("fidelity_test", "candidate_test", "monotonicity", "latency", "decision_agreement")},
         "go_nogo": report["go_nogo"]["verdict"],
         "go_nogo_reasons": report["go_nogo"]["reasons"],

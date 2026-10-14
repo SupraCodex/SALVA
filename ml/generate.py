@@ -37,9 +37,20 @@ from .config import ARTIFACTS_DIR, load_config, sha256_json
 from .io_utils import dataframe_hash, save_dataset
 
 log = logging.getLogger("ml.generate")
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "2.0.0"
 TARGET = "loss"
-HIDDEN_COLUMNS = ("hidden_u", "hidden_mean_quality")   # NEVER features
+# NEVER features. The raw generator inputs are kept so that ml.validate can rebuild every
+# feature and label with the single implementation in salva_core (features + kinetics).
+HIDDEN_COLUMNS = (
+    "hidden_u",
+    "hidden_mean_quality",
+    "hidden_temp_air_c",
+    "hidden_diurnal_amp_c",
+    "hidden_temp_shock_c",
+    "hidden_transit_factor",
+    "hidden_remaining_h",
+    "hidden_temp_offset_c",
+)
 ID_COLUMNS = ("lot_id", "row_id", "product")
 _U_EPS = 1e-6
 
@@ -101,7 +112,7 @@ def generate_dataset(
     f = F.assemble(
         params, maturity=maturity, packaging=packaging, age_h=age, remaining_h=remaining,
         temp_air_c=temp_air, delay_h=delay, diurnal_amp_c=amp, temp_shock_c=shock,
-        transit_factor=transit, extra_h=hold, temp_offset_c=offset, storage_mode=storage_mode,
+        transit_factor=transit, hold_h=hold, temp_offset_c=offset, storage_mode=storage_mode,
         product=params.name,
     )
     model = KineticLossModel(params)
@@ -115,6 +126,12 @@ def generate_dataset(
         TARGET: np.asarray(loss, dtype=float),
         "hidden_u": u_row,
         "hidden_mean_quality": np.asarray(quality, dtype=float),
+        "hidden_temp_air_c": temp_air,
+        "hidden_diurnal_amp_c": amp,
+        "hidden_temp_shock_c": shock,
+        "hidden_transit_factor": transit,
+        "hidden_remaining_h": remaining,
+        "hidden_temp_offset_c": offset,
     })
     return df
 
@@ -140,6 +157,7 @@ def build_metadata(cfg: dict[str, Any], params: ProductParams, df: pd.DataFrame,
         "hidden_columns": list(HIDDEN_COLUMNS),
         "model_columns": list(F.MODEL_COLUMNS),
         "warning": "Synthetic labels computed by the kinetic model. Not field observations.",
+        "labels_include_chilling_penalty": True,
         "dependencies": {"python": platform.python_version(), "numpy": np.__version__,
                          "scipy": scipy.__version__, "pandas": pd.__version__},
         "created_at_utc": datetime.now(UTC).isoformat(timespec="seconds"),

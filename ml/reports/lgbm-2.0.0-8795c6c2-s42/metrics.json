@@ -1,0 +1,215 @@
+{
+  "data_type": "SYNTHETIC",
+  "dataset_hash": "8795c6c2beee18e65773837b690d90dff19c30e948c3fa04ce646af3e895fdd8",
+  "dataset_id": "synth-g2.0.0-s42-8795c6c2",
+  "go_nogo": {
+    "criteria": {
+      "coverage_p10_p90": {
+        "note": "95% CI over lots [0.732, 0.791]; kinetic reference (perfect model) = 0.771",
+        "passed": true,
+        "rule": "in [0.76, 0.84]",
+        "value": 0.7614124965693898
+      },
+      "decision_agreement": {
+        "note": "",
+        "passed": true,
+        "rule": ">= 0.85",
+        "value": 0.945
+      },
+      "latency_ms_10k_rows": {
+        "note": "",
+        "passed": true,
+        "rule": "< 300 ms",
+        "value": 106.37158999998064
+      },
+      "monotonicity_violations": {
+        "note": "",
+        "passed": false,
+        "rule": "<= 0",
+        "value": 1440
+      },
+      "p50_fidelity_mae": {
+        "note": "",
+        "passed": true,
+        "rule": "< 0.03",
+        "value": 0.025472366802356577
+      }
+    },
+    "experimental_model": "LightGBM",
+    "production_model": "KineticModel",
+    "reasons": [
+      "monotonicity_violations: 1440 (required <= 0)"
+    ],
+    "verdict": "LIGHTGBM NO-GO"
+  },
+  "metrics": {
+    "baseline_extrapolated": {
+      "coverage_p10_p90": 0.8386023294509152,
+      "mae_p50_vs_realised": 0.05893764955664787,
+      "n_lots": 400,
+      "n_rows": 7212,
+      "pinball": {
+        "0.05": 0.00889869460087797,
+        "0.10": 0.014740465221579119,
+        "0.25": 0.025172730444958533,
+        "0.50": 0.029468824778323934,
+        "0.75": 0.02251231130708939,
+        "0.90": 0.011638220137520828,
+        "0.95": 0.006583807462155263
+      },
+      "pinball_mean": 0.01700215056464358,
+      "quantile_order_violations": 0
+    },
+    "baseline_test": {
+      "coverage_p10_p90": 0.7712011709816119,
+      "mae_p50_vs_realised": 0.07509815371712757,
+      "n_lots": 486,
+      "n_rows": 10931,
+      "pinball": {
+        "0.05": 0.009455840096458711,
+        "0.10": 0.015994373761552643,
+        "0.25": 0.02890728242503994,
+        "0.50": 0.03754907685856378,
+        "0.75": 0.030227044099263974,
+        "0.90": 0.016435877696526557,
+        "0.95": 0.009680767880390883
+      },
+      "pinball_mean": 0.021178608973970923,
+      "quantile_order_violations": 0
+    },
+    "candidate_extrapolated": {
+      "coverage_p10_p90": 1.0,
+      "mae_p50_vs_realised": 0.07205743164029269,
+      "n_lots": 400,
+      "n_rows": 7212,
+      "pinball": {
+        "0.05": 0.03951826059144004,
+        "0.10": 0.07903652118288008,
+        "0.25": 0.03220805773680752,
+        "0.50": 0.036030347862707354,
+        "0.75": 0.028430739965909783,
+        "0.90": 0.02096347881711991,
+        "0.95": 0.010481739408559967
+      },
+      "pinball_mean": 0.03523844936648923,
+      "quantile_order_violations": 0
+    },
+    "candidate_test": {
+      "coverage_p10_p90": 0.7614124965693898,
+      "mae_p50_vs_realised": 0.07998625758352275,
+      "n_lots": 486,
+      "n_rows": 10931,
+      "pinball": {
+        "0.05": 0.010053421722453784,
+        "0.10": 0.017082452541901754,
+        "0.25": 0.03152772513767343,
+        "0.50": 0.039960413908663436,
+        "0.75": 0.03218335342130893,
+        "0.90": 0.01791156967251823,
+        "0.95": 0.01064054012727344
+      },
+      "pinball_mean": 0.022765639504541857,
+      "quantile_order_violations": 0
+    },
+    "candidate_val": {
+      "coverage_p10_p90": 0.7771625669419987,
+      "mae_p50_vs_realised": 0.07548460401783048,
+      "n_lots": 489,
+      "n_rows": 11017,
+      "pinball": {
+        "0.05": 0.00970500869929225,
+        "0.10": 0.016738043895793902,
+        "0.25": 0.030829205049922412,
+        "0.50": 0.0376231911315127,
+        "0.75": 0.02952194375789481,
+        "0.90": 0.016737023596961408,
+        "0.95": 0.009737519005136138
+      },
+      "pinball_mean": 0.02155599073378766,
+      "quantile_order_violations": 0
+    },
+    "coverage_ci_test": {
+      "ci95_high": 0.7912425305821994,
+      "ci95_low": 0.7323396837578079,
+      "coverage": 0.7614124965693898,
+      "n_lots": 486
+    },
+    "decision_agreement": {
+      "agreement": 0.945,
+      "n_scenarios": 200,
+      "status": "EVALUATED"
+    },
+    "evaluator_version": "1.0.0",
+    "fidelity_extrapolated": {
+      "mae_p10": 0.6836795661827235,
+      "mae_p50": 0.036150307989517516,
+      "mae_p90": 0.11390178185155195,
+      "max_abs_p50": 0.2590213215383742
+    },
+    "fidelity_test": {
+      "mae_p10": 0.027492619678565675,
+      "mae_p50": 0.025472366802356577,
+      "mae_p90": 0.02476741283848113,
+      "max_abs_p50": 0.21471637452256276
+    },
+    "latency": {
+      "max_ms": 117.73205600002257,
+      "median_ms": 106.37158999998064,
+      "n_rows": 10000
+    },
+    "latency_baseline": {
+      "max_ms": 28.313598000295315,
+      "median_ms": 22.600509999847418,
+      "n_rows": 10000
+    },
+    "monotonicity": {
+      "by_perturbation": {
+        "diurnal_amplitude": 508,
+        "exposure_age": 393,
+        "maturity": 0,
+        "temperature": 368,
+        "transit": 171
+      },
+      "n_rows": 2000,
+      "total_violations": 1440
+    },
+    "monotonicity_baseline": {
+      "by_perturbation": {
+        "diurnal_amplitude": 0,
+        "exposure_age": 0,
+        "maturity": 0,
+        "temperature": 0,
+        "transit": 0
+      },
+      "n_rows": 2000,
+      "total_violations": 0
+    },
+    "pairwise_ordering_proxy": {
+      "agreement": 0.9702734839476813,
+      "pairs_total": 2000,
+      "pairs_used": 1682
+    },
+    "shap_importance_p50": {
+      "age_h": 0.013465976706324522,
+      "degree_hours_above_ref": 0.41227973368976345,
+      "delay_h": 0.0009007215537990173,
+      "exposure_h": 0.19026818178557192,
+      "hold_h": 0.0006659153609923388,
+      "maturity": 0.30181958897812744,
+      "packaging": 0.032638605277145565,
+      "remaining_transit_h": 0.006447230619286892,
+      "storage_mode": 0.0038216355867534395,
+      "temp_max_c": 0.01748955292992485,
+      "temp_mean_c": 0.02020285751231057
+    }
+  },
+  "model_version": "lgbm-2.0.0-8795c6c2-s42",
+  "real_world_validation": "NOT PERFORMED",
+  "seed": 42,
+  "thresholds_integrity": {
+    "first_commit": "77bdb79f85cd527e9b94b98a8cfea707d8e4c46a 2026-10-09T10:29:30+00:00",
+    "status": "OK"
+  },
+  "thresholds_sha256": "b74f91af85346cefaecd2c54bb485be38a0b4f85c7f32508bfa41b09ed96becc",
+  "train_mode": "pinball_custom_monotone"
+}

@@ -34,7 +34,7 @@ from .validate import assert_no_forbidden_features, validate_dataframe
 
 log = logging.getLogger("ml.train")
 warnings.filterwarnings("ignore", message=".*eval_set.*deprecated.*")
-TRAINER_VERSION = "1.0.0"
+TRAINER_VERSION = "2.0.0"
 
 
 def monotone_constraints() -> list[int]:
@@ -135,6 +135,14 @@ def run(split_dir: Path | str, config: Path | str | None = None, out_dir: Path |
         "feature_version": F.FEATURE_VERSION, "feature_schema_hash": F.schema_hash(),
         "feature_columns": list(F.MODEL_COLUMNS), "monotone_constraints": monotone_constraints(), "mode": hp.get("mode"),
         "rows": {"train": len(y_tr), "val": len(y_va)},
+        # Labels come from kinetics.quality_and_loss, which already applies chilling injury.
+        "loss_includes_chilling_penalty": True,
+        # Observed support of the training data: the loss model clips to it at inference
+        # and flags extrapolation outside it.
+        "calibration_ranges": {
+            c: {"min": float(splits["train"][c].min()), "max": float(splits["train"][c].max())}
+            for c in F.NUMERIC_FEATURES
+        },
         "per_quantile": info, "train_seconds": round(seconds, 2),
         "dependencies": {"python": platform.python_version(), "numpy": np.__version__,
                          "pandas": pd.__version__, "lightgbm": lgb.__version__},
