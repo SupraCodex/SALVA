@@ -13,6 +13,13 @@ from app.services import engine
 router = APIRouter(tags=["health"])
 
 
+@router.get("/health/live", summary="Liveness only: answers without touching the database")
+def live():
+    # Used by the hosting platform and uptime monitors so that a sleeping serverless database
+    # (and its free compute quota) is not woken up every few seconds.
+    return {"status": "ok"}
+
+
 @router.get("/health", summary="Service, database, active loss model and explanation provider")
 def health(db: Session = Depends(get_db)):
     settings = get_settings()
