@@ -10,6 +10,8 @@ from app.deps import Caller, get_caller, limit_compute, limit_explain
 from app.llm.schemas import Lang
 from app.schemas.analysis import (
     AnalysisOut,
+    QuestionIn,
+    QuestionOut,
     RecommendationOut,
     SensitivityIn,
     SensitivityOut,
@@ -19,6 +21,7 @@ from app.schemas.analysis import (
 from app.schemas.outcome import ExplanationIn, ExplanationOut
 from app.services import analysis as analysis_service
 from app.services import explanation as explanation_service
+from app.services import questions as question_service
 from app.services import simulation as simulation_service
 
 router = APIRouter(tags=["analysis and decisions"])
@@ -35,6 +38,20 @@ def get_analysis(
     db: Session = Depends(get_db),
 ):
     return analysis_service.to_out(analysis_service.get_or_404(db, caller, analysis_id))
+
+
+@router.post(
+    "/analyses/{analysis_id}/questions",
+    response_model=QuestionOut,
+    summary="Ask about an analysis; 'what if' questions are simulated, nothing is invented or saved",
+)
+def ask_question(
+    analysis_id: uuid.UUID,
+    body: QuestionIn,
+    caller: Caller = Depends(limit_compute),
+    db: Session = Depends(get_db),
+):
+    return question_service.ask(db, caller, analysis_id, body)
 
 
 @router.post(
