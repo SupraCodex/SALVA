@@ -64,10 +64,10 @@ def list_lots(
 )
 def enrichment_preview(
     data: EnrichmentIn,
-    _: Caller = Depends(limit_compute),
+    caller: Caller = Depends(limit_compute),
     db: Session = Depends(get_db),
 ):
-    return lot_service.preview_enrichment(db, data)
+    return lot_service.preview_enrichment(db, caller.organization_id, data)
 
 
 @router.get(

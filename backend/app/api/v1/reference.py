@@ -13,6 +13,7 @@ from app.schemas.reference import (
     AssumptionsOut,
     LocationOut,
     MarketOut,
+    MarketSettingIn,
     ProductOut,
     RouteEstimateOut,
     StorageSiteIn,
@@ -44,8 +45,22 @@ def locations(_: Caller = Depends(get_caller), db: Session = Depends(get_db)):
     response_model=list[MarketOut],
     summary="Markets with reference price and absorption",
 )
-def markets(_: Caller = Depends(get_caller), db: Session = Depends(get_db)):
-    return [ref_service.market_out(m) for m in ref_repo.markets(db)]
+def markets(caller: Caller = Depends(get_caller), db: Session = Depends(get_db)):
+    return ref_service.markets(db, caller)
+
+
+@router.patch(
+    "/markets/{market_id}",
+    response_model=MarketOut,
+    summary="Set the organization's price or absorption for a market (administrator)",
+)
+def update_market(
+    market_id: uuid.UUID,
+    data: MarketSettingIn,
+    caller: Caller = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ref_service.update_market_setting(db, caller, market_id, data)
 
 
 @router.get(

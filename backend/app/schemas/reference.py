@@ -38,6 +38,15 @@ class MarketOut(Out):
     ref_price_fcfa_kg: float
     absorption_kg_day: float
     assumption_note: str
+    org_price_fcfa_kg: float | None = None
+    org_absorption_kg_day: float | None = None
+
+
+class MarketSettingIn(StrictIn):
+    """Organization values for a market; null restores the reference value."""
+
+    price_fcfa_kg: float | None = Field(default=None, gt=0, le=100_000)
+    absorption_kg_day: float | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class StorageSiteIn(StrictIn):

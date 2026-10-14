@@ -20,6 +20,7 @@ from app.db.models import Analysis, Lot
 from app.deps import Caller
 from app.errors import ApiError, field_error, not_found
 from app.repositories import lots as lots_repo
+from app.repositories import reference as ref_repo
 from app.schemas.analysis import AnalysisCreate, AnalysisOut
 from app.schemas.common import build
 from app.services import engine, enrichment
@@ -62,7 +63,7 @@ def analyze(db: Session, caller: Caller, lot_id: uuid.UUID, body: AnalysisCreate
     model = engine.loss_model(lot.product_code)
 
     temp = enrichment.temperature(lot, now)
-    price = enrichment.price(lot)
+    price = enrichment.price(lot, ref_repo.market_setting(db, lot.organization_id, lot.destination_market_id))
     age_h = max(0.0, hours_between(now, lot.harvested_at))
     remaining_h = max(0.0, hours_between(lot.eta_current_at, now))
     total_delay = max(0.0, hours_between(lot.eta_current_at, lot.eta_planned_at))
