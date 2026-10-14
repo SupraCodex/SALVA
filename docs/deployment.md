@@ -15,6 +15,10 @@ Measured on the application: about 175 MB of memory once started; analysis and s
 answer in well under a second on one core, the sensitivity grid in about one second (expect a
 few seconds on Render's 0.1 CPU).
 
+Render does **not** read the `.env.example` files of the repository: they are for running the
+project on your own computer (`.env.example` at the root for Docker, `backend/.env.example` for
+the backend without Docker). Online, every variable is entered in Render's Environment page.
+
 ## 1. Database (Neon)
 
 1. Sign up at <https://neon.com> (GitHub sign-in works) and create a project: name `salva`,
