@@ -11,13 +11,16 @@ jobs:
         with: { python-version: "3.11" }
       - name: Install
         run: |
-          pip install pytest ruff pydantic pydantic-settings httpx
+          pip install pytest ruff pydantic pydantic-settings httpx sqlalchemy
           for d in core backend; do
             if [ -f "$d/pyproject.toml" ]; then pip install -e "$d"; fi
+          done
+          for f in ml/requirements.txt backend/requirements.txt; do
+            if [ -f "$f" ]; then pip install -r "$f"; fi
           done
       - name: Lint
         run: ruff check .
       - name: Tests
         env:
           PYTHONPATH: backend
-        run: pytest -q || [ $? -eq 5 ]
+        run: pytest -q
