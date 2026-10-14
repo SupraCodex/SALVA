@@ -1,3 +1,7 @@
 """SALVA scientific core (pure Python: no web framework, no database, no network)."""
 
-__version__ = "0.1.0"
+from .risk import RiskAssessment, classify_risk
+
+__version__ = "0.2.0"
+
+__all__ = ["RiskAssessment", "classify_risk"]

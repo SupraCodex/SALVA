@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "salva-core"
-version = "0.1.0"
-description = "SALVA scientific core: kinetics, features, loss models, simulation, recommendation"
+version = "0.2.0"
+description = "SALVA scientific core: kinetics, risk, simulation, sensitivity and recommendation"
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "scipy>=1.11", "pyyaml>=6"]
 
 [project.optional-dependencies]
 lgbm = ["lightgbm>=4.0", "joblib>=1.3"]
+dev = ["mypy>=1.10", "pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 include = ["salva_core*"]
