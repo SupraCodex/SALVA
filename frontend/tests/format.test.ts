@@ -8,15 +8,15 @@ const digits = (s: string) => s.replace(/[\s  ]/g, "");
 
 test("currency and weights are rounded and labelled", () => {
   assert.equal(digits(fcfa(177635.4, "fr")), "177635FCFA");
-  assert.equal(fcfa(177635.4, "en"), "177,635 FCFA");
-  assert.equal(kg(299.6, "en"), "300 kg");
+  assert.equal(fcfa(177635.4, "en"), "177,635\u00a0FCFA");
+  assert.equal(kg(299.6, "en"), "300\u00a0kg");
   assert.equal(fcfa(null, "en"), "–");
 });
 
 test("percentages and hours", () => {
   assert.equal(pct(0.404, "en"), "40%");
-  assert.equal(hours(4.25, "en"), "4.3 h");
-  assert.equal(hours(18.4, "en"), "18 h");
+  assert.equal(hours(4.25, "en"), "4.3\u00a0h");
+  assert.equal(hours(18.4, "en"), "18\u00a0h");
   assert.equal(pct(Number.NaN, "fr"), "–");
 });
 

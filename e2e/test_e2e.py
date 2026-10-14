@@ -38,7 +38,7 @@ def test_nominal_flow_from_lot_to_recommendation(page: Page):
     explanation = page.locator(".explanation__body")
     expect(explanation).to_be_visible(timeout=30_000)
     # Every figure of the explanation comes from the simulation: the banner's central value is in it.
-    net = page.locator(".banner__value").inner_text().split(" FCFA")[0]
+    net = re.split(r"\s*FCFA", page.locator(".banner__value").inner_text())[0]
     expect(explanation).to_contain_text(net)
     expect(page.locator(".disclaimer")).to_contain_text("not a guarantee")
     assert not page.errors  # type: ignore[attr-defined]

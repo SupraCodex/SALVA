@@ -113,12 +113,12 @@ export function AnalysisView({ ctx }: { ctx: LotContext }) {
             <div>
               <dt>{t("analysis.temp")}</dt>
               <dd>
-                {num(i.temp_mean_c.value, lang)} °C <SourceBadge source={i.temp_mean_c.source} />
+                {num(i.temp_mean_c.value, lang)} °C <SourceBadge source={i.temp_mean_c.source} />
               </dd>
             </div>
             <div>
               <dt>{t("analysis.productTemp")}</dt>
-              <dd>{num(i.product_temp_mean_c, lang)} °C</dd>
+              <dd>{num(i.product_temp_mean_c, lang)} °C</dd>
             </div>
             <div>
               <dt>{t("analysis.price")}</dt>
@@ -127,7 +127,7 @@ export function AnalysisView({ ctx }: { ctx: LotContext }) {
               </dd>
             </div>
           </dl>
-          <p className="muted small">{t("analysis.model", { name: analysis.model.name, version: analysis.model.version })}</p>
+          <p className="muted small">{t("analysis.model", { name: td(`dash.model.${analysis.model.name}`, analysis.model.name), version: analysis.model.version })}</p>
         </section>
       </div>
 

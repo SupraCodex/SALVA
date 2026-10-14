@@ -365,12 +365,12 @@ export function NewLot() {
           {!checking && enrichment && (
             enrichment.temperature_available ? (
               <p>
-                {t("form.weatherOk", { t: `${num(enrichment.temperature.value, lang)} °C` })}{" "}
+                {t("form.weatherOk", { t: `${num(enrichment.temperature.value, lang)} °C` })}{" "}
                 <SourceBadge source={enrichment.temperature.source} />
               </p>
             ) : (
               <Notice tone="warn">
-                {t("form.weatherDown", { t: `${num(enrichment.temperature.value, lang)} °C` })}{" "}
+                {t("form.weatherDown", { t: `${num(enrichment.temperature.value, lang)} °C` })}{" "}
                 <button type="button" className="link-button" onClick={() => setAdvanced(true)}>
                   {t("form.temp")}
                 </button>
