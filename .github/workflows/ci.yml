@@ -156,7 +156,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install pip-audit && python -m pip install -e core -e backend
+      - run: python -m pip install --upgrade pip setuptools pip-audit && python -m pip install -e core -e backend
       - name: Audit Python dependencies (pip-audit)
         run: |
           status=0
