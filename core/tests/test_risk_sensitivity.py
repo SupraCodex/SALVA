@@ -56,11 +56,33 @@ def test_rm4_discourages_route_and_removes_it_from_best_probability():
     model = KineticLossModel(params)
     lot = Lot(10.0, "breaker", "crate", 0.0, 1_000.0, 35.0)
     option = Option("long", "continue", 10.0, Market(1, "market", 100.0, 100.0))
-    result = run_all(model, lot, [option], draw(1_000, 4), params)[0]
+    near = Option(
+        "near",
+        "sell_local",
+        10.0,
+        Market(2, "near", 80.0, 100.0),
+        transit_saving_h=999.0,
+    )
+    results = {
+        r.id: r for r in run_all(model, lot, [option, near], draw(1_000, 4), params)
+    }
+    result = results["long"]
     assert result.feasible
     assert result.discouraged
     assert result.discouraged_reason == "SHELF_LIFE_P50_EXCEEDED"
     assert result.prob_best == 0.0
+    assert not results["near"].discouraged
+    assert results["near"].prob_best == 1.0
+
+
+def test_rm4_single_discouraged_route_is_still_compared_as_least_bad():
+    params = load_product("tomato")
+    model = KineticLossModel(params)
+    lot = Lot(10.0, "breaker", "crate", 0.0, 1_000.0, 35.0)
+    option = Option("long", "continue", 10.0, Market(1, "market", 100.0, 100.0))
+    result = run_all(model, lot, [option], draw(1_000, 4), params)[0]
+    assert result.discouraged
+    assert result.prob_best == 1.0
 
 
 def test_sensitivity_reuses_engine_and_reports_boundaries():

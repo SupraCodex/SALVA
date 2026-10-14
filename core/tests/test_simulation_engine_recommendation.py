@@ -128,11 +128,8 @@ def test_real_kinetic_model_runs_two_thousand_draws_end_to_end():
             assert result.loss_p10 <= result.loss_p50 <= result.loss_p90
             assert result.net_p10 <= result.net_p50 <= result.net_p90
     eligible = [r for r in results if r.feasible and not r.discouraged]
-    if eligible:
-        assert sum(r.prob_best for r in eligible) == pytest.approx(1.0)
-    else:
-        assert all(r.prob_best == 0.0 for r in results)
-        assert any(r.discouraged for r in results if r.feasible)
+    compared = eligible or [r for r in results if r.feasible]
+    assert sum(r.prob_best for r in compared) == pytest.approx(1.0)
 
 
 def test_rm4_counts_storage_hold_separately_from_transit():
@@ -248,15 +245,44 @@ def test_best_action_is_risk_adjusted_and_rationales_are_structured():
     assert isinstance(rec.rationale_codes, tuple)
 
 
-def test_discouraged_options_are_not_recommended():
+def test_discouraged_options_are_not_recommended_while_another_is_eligible():
+    p, lot, options = inputs()
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1_000, 6), p, include_allocation=False
+    )
+    feasible = [r for r in results if r.feasible]
+    keep = feasible[-1].id
+    mixed = [r if r.id == keep else replace(r, discouraged=True) for r in results]
+    rec = recommend(mixed)
+    assert rec.best_id == keep
+    assert "ALL_OPTIONS_DISCOURAGED" not in rec.rationale_codes
+
+
+def test_all_discouraged_names_the_least_bad_option_with_a_warning():
+    """Design document §33: every option is bad -> least bad one + heavy-loss warning."""
     p, lot, options = inputs()
     results = run_all(
         MonotoneLossModel(), lot, options, draw(1_000, 6), p, include_allocation=False
     )
     discouraged = [replace(r, discouraged=True) for r in results]
     rec = recommend(discouraged)
+    feasible = [r for r in discouraged if r.feasible]
+    best = max(feasible, key=lambda r: r.net_p50 - 0.5 * (r.net_p50 - r.net_p10))
+    assert rec.best_id == best.id
+    assert rec.confidence == "low"
+    assert rec.rationale_codes[:2] == ("ALL_OPTIONS_DISCOURAGED", "HEAVY_LOSSES_LIKELY")
+    assert not rec.no_clear_winner
+
+
+def test_nothing_feasible_still_returns_no_recommendation():
+    p, lot, options = inputs()
+    results = run_all(
+        MonotoneLossModel(), lot, options, draw(1_000, 6), p, include_allocation=False
+    )
+    infeasible = [replace(r, feasible=False) for r in results]
+    rec = recommend(infeasible)
     assert rec.best_id is None
-    assert rec.rationale_codes == ("ALL_OPTIONS_DISCOURAGED",)
+    assert rec.rationale_codes == ("NO_FEASIBLE_ACTION",)
 
 
 def test_one_candidate_is_named_without_inventing_a_tie():

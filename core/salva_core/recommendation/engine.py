@@ -25,7 +25,9 @@ def _score(result: ScenarioResult, policy: Policy) -> float:
 
 
 def _probabilities(results: Sequence[ScenarioResult]) -> dict[str, float]:
-    eligible = [r for r in results if r.feasible and not r.discouraged]
+    eligible = [r for r in results if r.feasible and not r.discouraged] or [
+        r for r in results if r.feasible
+    ]
     if not eligible:
         return {}
     if len(eligible) == 1:
@@ -64,6 +66,12 @@ def recommend(
     if len({r.id for r in rows}) != len(rows):
         raise ValueError("scenario result ids must be unique")
     eligible = [r for r in rows if r.feasible and not r.discouraged]
+    least_bad = not eligible and any(r.feasible for r in rows)
+    if least_bad:
+        # Design document §33: when every option is bad, name the least bad one with an
+        # explicit warning instead of leaving the user without a decision. RM-4 still marks
+        # each route as discouraged, and confidence is never above "low".
+        eligible = [r for r in rows if r.feasible]
     if not eligible:
         return Recommendation(
             best_id=None,
@@ -113,7 +121,8 @@ def recommend(
         gap = max(0.0, (best_score - scores[1]) / denominator)
 
     unclear = (
-        len(scored) > 1
+        not least_bad
+        and len(scored) > 1
         and gap is not None
         and gap < chosen_policy.materiality
         and best_probability < chosen_policy.clear_probability
@@ -144,10 +153,14 @@ def recommend(
     else:
         confidence = "low"
 
+    codes = rationale_codes(rows, best, chosen_policy)
+    if least_bad:
+        confidence = "low"
+        codes = ("ALL_OPTIONS_DISCOURAGED", "HEAVY_LOSSES_LIKELY", *codes)
     return Recommendation(
         best_id=best.id,
         confidence=confidence,
-        rationale_codes=rationale_codes(rows, best, chosen_policy),
+        rationale_codes=codes,
         ranked_ids=tuple(row.id for row in ranked),
         scores_fcfa=tuple((row.id, value) for row, value in scored),
         prob_best=best_probability,

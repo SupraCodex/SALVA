@@ -25,6 +25,9 @@ def _best_probabilities(results: Sequence[ScenarioResult]) -> list[float]:
         for i, result in enumerate(results)
         if result.feasible and not result.discouraged
     ]
+    if not eligible:
+        # Every feasible route exceeds the estimated shelf life: compare the least bad ones.
+        eligible = [i for i, result in enumerate(results) if result.feasible]
     probabilities = [0.0] * len(results)
     if not eligible:
         return probabilities
@@ -151,6 +154,11 @@ def run_all(
                 )
             results.append(result)
 
+    least_bad = not active_options
+    if least_bad:
+        # No route keeps the lot within its estimated shelf life. The split is still the
+        # most useful comparison, but it inherits the RM-4 warning of its routes.
+        active_options = opts
     if include_allocation and len(active_options) >= 2:
         mean_values = [
             float(np.mean(draws_by_id[option.id].value_fraction))
@@ -178,6 +186,12 @@ def run_all(
                     discarded_kg=plan.discarded_kg,
                 )
             )
+            if least_bad:
+                results[-1] = replace(
+                    results[-1],
+                    discouraged=True,
+                    discouraged_reason="SHELF_LIFE_P50_EXCEEDED",
+                )
 
     # RM materiality is expressed relative to the nominal value of the lot, not
     # relative to whichever net score happens to rank first. Use the highest configured

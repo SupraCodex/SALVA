@@ -59,7 +59,11 @@ from 100 to 20,000, as specified by the design document.
    current features are extrapolated, age response is non-monotone, or no threshold crossing
    lies within calibrated age support. Supported estimates can mark a route `discouraged`
    when nominal transit exceeds remaining shelf life; discouraged routes are excluded from
-   best-action probabilities and optimized allocation. These thresholds are assumptions,
+   best-action probabilities and optimized allocation while at least one route is eligible.
+   When every feasible route is discouraged, the engine compares them as a "least bad"
+   set (design document §33): the split inherits the warning, and `recommend` names the
+   least bad option with `low` confidence and the codes `ALL_OPTIONS_DISCOURAGED` and
+   `HEAVY_LOSSES_LIKELY`. These thresholds are assumptions,
    not validated expiry guarantees.
 7. **Sensitivity:** `analyze_sensitivity` evaluates a temperature/delay grid through the
    same `run_all` and recommendation code, with one common shock bundle for every cell, and
