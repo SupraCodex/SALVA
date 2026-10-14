@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from app import errors
 from app import logging as app_logging
@@ -97,7 +98,7 @@ def create_app() -> FastAPI:
 class _ImmutableStatic(StaticFiles):
     """Bundles carry a content hash in their name, so browsers may keep them for a year."""
 
-    async def get_response(self, path: str, scope):  # type: ignore[no-untyped-def]
+    async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
         if response.status_code == 200:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"

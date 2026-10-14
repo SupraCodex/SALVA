@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Analysis, SimulationRun
 from app.deps import Caller
 from app.errors import ApiError, not_found
+from app.llm.schemas import Lang
 from app.repositories import lots as lots_repo
 from app.schemas.analysis import QuestionIn, QuestionOut, SimulationCreate
 from app.schemas.common import build
@@ -60,7 +61,7 @@ _INTENTS = [
 ]
 _EDITOR = r"(\bprix\b|\bprice|absorption|\bcout|\bcost|transport|stockage|storage)"
 
-TEXT = {
+TEXT: dict[Lang, dict[str, str]] = {
     "fr": {
         "what_if": "Avec {changes}, la meilleure option serait « {best} » : environ {p50} nets "
         "(plage {p10} à {p90}), confiance {confidence}. Aujourd'hui : « {current} », {current_p50} nets.",
@@ -91,10 +92,6 @@ TEXT = {
         "packaging": "un emballage « {v} »",
         "maturity": "une maturité « {v} »",
         "and": " et ",
-        "confidence": {"high": "élevée", "medium": "moyenne", "low": "faible", "none": "aucune"},
-        "level": {"low": "faible", "medium": "moyen", "high": "élevé"},
-        "packaging_names": {"crate": "caisse ajourée", "carton": "carton", "sack": "sac"},
-        "maturity_names": {"green": "vert", "breaker": "tournant", "ripe": "mûr"},
     },
     "en": {
         "what_if": "With {changes}, the best option would be “{best}”: about {p50} net "
@@ -124,11 +121,25 @@ TEXT = {
         "packaging": "“{v}” packaging",
         "maturity": "“{v}” maturity",
         "and": " and ",
-        "confidence": {"high": "high", "medium": "medium", "low": "low", "none": "no"},
-        "level": {"low": "low", "medium": "medium", "high": "high"},
-        "packaging_names": {"crate": "ventilated crate", "carton": "carton", "sack": "sack"},
-        "maturity_names": {"green": "green", "breaker": "breaker", "ripe": "ripe"},
     },
+}
+
+
+CONFIDENCE: dict[Lang, dict[str, str]] = {
+    "fr": {"high": "élevée", "medium": "moyenne", "low": "faible", "none": "aucune"},
+    "en": {"high": "high", "medium": "medium", "low": "low", "none": "no"},
+}
+LEVEL: dict[Lang, dict[str, str]] = {
+    "fr": {"low": "faible", "medium": "moyen", "high": "élevé"},
+    "en": {"low": "low", "medium": "medium", "high": "high"},
+}
+PACKAGING_NAMES: dict[Lang, dict[str, str]] = {
+    "fr": {"crate": "caisse ajourée", "carton": "carton", "sack": "sac"},
+    "en": {"crate": "ventilated crate", "carton": "carton", "sack": "sack"},
+}
+MATURITY_NAMES: dict[Lang, dict[str, str]] = {
+    "fr": {"green": "vert", "breaker": "tournant", "ripe": "mûr"},
+    "en": {"green": "green", "breaker": "breaker", "ripe": "ripe"},
 }
 
 
@@ -199,7 +210,7 @@ def _validate(changes: dict[str, float | str]) -> None:
         raise ApiError(422, "validation-error", "One or more fields are invalid.", errors)
 
 
-def _describe(changes: dict[str, float | str], lang: str) -> str:
+def _describe(changes: dict[str, float | str], lang: Lang) -> str:
     t = TEXT[lang]
     parts = []
     for key in ("delay_h", "temp_c", "packaging", "maturity"):
@@ -207,9 +218,9 @@ def _describe(changes: dict[str, float | str], lang: str) -> str:
             continue
         value = changes[key]
         if key == "packaging":
-            value = t["packaging_names"][str(value)]
+            value = PACKAGING_NAMES[lang][str(value)]
         elif key == "maturity":
-            value = t["maturity_names"][str(value)]
+            value = MATURITY_NAMES[lang][str(value)]
         elif isinstance(value, float):
             value = f"{value:g}".replace(".", ",") if lang == "fr" else f"{value:g}"
         parts.append(t[key].format(v=value))
@@ -223,7 +234,7 @@ def _best_row(run: SimulationRun):
     return next((s for s in run.scenarios if s.id == reco.best_scenario_id), None)
 
 
-def _what_if(db: Session, analysis: Analysis, run: SimulationRun, changes: dict, lang: str) -> QuestionOut:
+def _what_if(db: Session, analysis: Analysis, run: SimulationRun, changes: dict, lang: Lang) -> QuestionOut:
     t = TEXT[lang]
     lot = analysis.lot
     request = SimulationCreate.model_validate(run.request)
@@ -273,7 +284,7 @@ def _what_if(db: Session, analysis: Analysis, run: SimulationRun, changes: dict,
             p50=f"{fmt_int(best.net_p50, lang)} FCFA",
             p10=f"{fmt_int(best.net_p10, lang)} FCFA",
             p90=f"{fmt_int(best.net_p90, lang)} FCFA",
-            confidence=t["confidence"].get(reco.confidence, reco.confidence),
+            confidence=CONFIDENCE[lang].get(reco.confidence, reco.confidence),
             current=current_label[lang] if current_label else "-",
             current_p50=f"{fmt_int(current_p50, lang)} FCFA",
         )
@@ -331,7 +342,7 @@ def ask(db: Session, caller: Caller, analysis_id: uuid.UUID, body: QuestionIn) -
             p10=fmt_pct(analysis.loss_p10, lang),
             p50=fmt_pct(analysis.loss_p50, lang),
             p90=fmt_pct(analysis.loss_p90, lang),
-            level=t["level"].get(analysis.risk_level, analysis.risk_level),
+            level=LEVEL[lang].get(analysis.risk_level, analysis.risk_level),
         )
         return build(QuestionOut, kind="risk", answer=answer)
     if kind == "editor":
@@ -352,7 +363,7 @@ def ask(db: Session, caller: Caller, analysis_id: uuid.UUID, body: QuestionIn) -
             p50=f"{fmt_int(net.get('p50'), lang)} FCFA",
             p10=f"{fmt_int(net.get('p10'), lang)} FCFA",
             p90=f"{fmt_int(net.get('p90'), lang)} FCFA",
-            confidence=t["confidence"].get(reco.confidence, reco.confidence),
+            confidence=CONFIDENCE[lang].get(reco.confidence, reco.confidence),
         )
         return build(QuestionOut, kind="recommendation", answer=answer)
     if kind == "why":
@@ -363,7 +374,7 @@ def ask(db: Session, caller: Caller, analysis_id: uuid.UUID, body: QuestionIn) -
         answer = t["uncertainty"].format(
             prob=fmt_pct(reco.prob_best, lang),
             n=fmt_int(run.n_draws, lang),
-            confidence=t["confidence"].get(reco.confidence, reco.confidence),
+            confidence=CONFIDENCE[lang].get(reco.confidence, reco.confidence),
             p10=fmt_pct(analysis.loss_p10, lang),
             p90=fmt_pct(analysis.loss_p90, lang),
         )
@@ -373,7 +384,7 @@ def ask(db: Session, caller: Caller, analysis_id: uuid.UUID, body: QuestionIn) -
     return build(QuestionOut, kind="assumptions", answer=t["assumptions"].format(items=names))
 
 
-_ASSUMPTION_NAMES = {
+_ASSUMPTION_NAMES: dict[Lang, dict[str, str]] = {
     "fr": {
         "temperature_air_c": "température de l'air",
         "remaining_transit_h": "trajet restant",
@@ -393,7 +404,7 @@ _ASSUMPTION_NAMES = {
 }
 
 
-def _assumption_text(item: dict, lang: str) -> str:
+def _assumption_text(item: dict, lang: Lang) -> str:
     key = str(item.get("key", ""))
     name = _ASSUMPTION_NAMES[lang].get(key, key.split(":")[0])
     value = item.get("value")
