@@ -1,6 +1,11 @@
 """Security checks of design document §37: isolation, roles, injection, limits, headers."""
 
+from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.testclient import TestClient
+
 from app.config import get_settings
+from app.main import _mount_frontend
 from tests.conftest import add_storage, analyze, create_lot, register, simulate
 
 
@@ -160,3 +165,20 @@ def test_session_refresh_has_its_own_budget(client, monkeypatch):
     assert refreshes == [401, 401, 401, 429]
     login = client.post("/api/v1/auth/login", json={"email": "y@example.cm", "password": "x"})
     assert login.status_code == 401
+
+
+def test_frontend_assets_are_compressed_and_cached(tmp_path, monkeypatch):
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<!doctype html><title>SALVA</title>")
+    (tmp_path / "assets" / "app-abc.js").write_text("console.log('salva');" * 200)
+    app = FastAPI()
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    _mount_frontend(app, tmp_path)
+    c = TestClient(app)
+    js = c.get("/assets/app-abc.js", headers={"Accept-Encoding": "gzip"})
+    assert js.headers["content-encoding"] == "gzip"
+    assert "immutable" in js.headers["cache-control"]
+    page = c.head("/lots/x/analysis")
+    assert page.status_code == 200
+    assert c.get("/lots/x/analysis").headers["cache-control"] == "no-cache"
