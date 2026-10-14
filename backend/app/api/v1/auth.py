@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db.models import User
 from app.db.session import get_db
-from app.deps import Caller, get_caller, limit_auth
+from app.deps import Caller, get_caller, limit_auth, limit_refresh
 from app.errors import ApiError
 from app.schemas.auth import LoginIn, MeOut, MeUpdate, RegisterIn, TokenOut
 from app.security import REFRESH_COOKIE, REFRESH_COOKIE_PATH
@@ -77,7 +77,7 @@ def login(data: LoginIn, response: Response, db: Session = Depends(get_db)):
 @router.post(
     "/auth/refresh",
     response_model=TokenOut,
-    dependencies=[Depends(limit_auth)],
+    dependencies=[Depends(limit_refresh)],
     summary="Rotate the refresh cookie and return a new access token",
 )
 def refresh(request: Request, response: Response, db: Session = Depends(get_db)):

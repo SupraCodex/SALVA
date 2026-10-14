@@ -31,6 +31,8 @@ class Settings(BaseSettings):
 
     # Rate limits (SEC-05)
     rate_auth_per_minute: int = 10
+    # Refresh tokens are 256-bit random values, so their limit only bounds page reloads.
+    rate_refresh_per_minute: int = 60
     rate_compute_per_hour: int = 60
     rate_explain_per_hour: int = 30
 

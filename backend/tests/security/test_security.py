@@ -149,3 +149,14 @@ def test_production_settings_refuse_default_secret(monkeypatch):
     with pytest.raises(ValueError):
         Settings(env="production", jwt_secret="x" * 40, allowed_origins=["*"])
     assert Settings(env="production", jwt_secret="x" * 40).secure_cookies
+
+
+def test_session_refresh_has_its_own_budget(client, monkeypatch):
+    """Page reloads refresh the session; they must not lock the user out of signing in."""
+    monkeypatch.setattr(get_settings(), "rate_auth_per_minute", 2)
+    monkeypatch.setattr(get_settings(), "rate_refresh_per_minute", 3)
+    csrf = {"X-Requested-With": "SALVA"}
+    refreshes = [client.post("/api/v1/auth/refresh", headers=csrf).status_code for _ in range(4)]
+    assert refreshes == [401, 401, 401, 429]
+    login = client.post("/api/v1/auth/login", json={"email": "y@example.cm", "password": "x"})
+    assert login.status_code == 401

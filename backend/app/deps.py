@@ -53,6 +53,10 @@ def limit_auth(request: Request) -> None:
     rate_limit.check(f"auth:{rate_limit.client_ip(request)}", get_settings().rate_auth_per_minute, 60)
 
 
+def limit_refresh(request: Request) -> None:
+    rate_limit.check(f"refresh:{rate_limit.client_ip(request)}", get_settings().rate_refresh_per_minute, 60)
+
+
 def limit_compute(caller: Caller = Depends(get_caller)) -> Caller:
     rate_limit.check(f"compute:{caller.user_id}", get_settings().rate_compute_per_hour, 3600)
     return caller
