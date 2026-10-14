@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.deps import Caller, get_caller, limit_compute, limit_explain
+from app.llm.schemas import Lang
 from app.schemas.analysis import (
     AnalysisOut,
     RecommendationOut,
@@ -103,5 +104,5 @@ async def explain(
     caller: Caller = Depends(limit_explain),
     db: Session = Depends(get_db),
 ):
-    lang = (body.lang if body and body.lang else None) or caller.locale
+    lang: Lang = body.lang if body and body.lang else ("en" if caller.locale == "en" else "fr")
     return explanation_service.to_out(await explanation_service.explain(db, caller, reco_id, lang))

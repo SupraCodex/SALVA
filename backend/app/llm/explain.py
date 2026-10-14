@@ -59,13 +59,13 @@ async def explain(
         log.warning("llm_rejected", extra={"reason": "timeout", "provider": provider.name})
         return _template(facts, lang, "timeout")
     except Exception as exc:  # noqa: BLE001 - the fallback must catch everything
-        reason = f"error:{type(exc).__name__}"
-        log.warning("llm_rejected", extra={"reason": reason, "provider": provider.name})
-        return _template(facts, lang, reason)
-    reason = check(out, facts, lang)
-    if reason:
-        log.warning("llm_rejected", extra={"reason": reason, "provider": provider.name})
-        return _template(facts, lang, reason)
+        error = f"error:{type(exc).__name__}"
+        log.warning("llm_rejected", extra={"reason": error, "provider": provider.name})
+        return _template(facts, lang, error)
+    rejection = check(out, facts, lang)
+    if rejection:
+        log.warning("llm_rejected", extra={"reason": rejection, "provider": provider.name})
+        return _template(facts, lang, rejection)
     return ExplanationResult(
         **out.model_dump(),
         source="llm",

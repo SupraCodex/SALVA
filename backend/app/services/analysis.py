@@ -21,6 +21,7 @@ from app.deps import Caller
 from app.errors import ApiError, field_error, not_found
 from app.repositories import lots as lots_repo
 from app.schemas.analysis import AnalysisCreate, AnalysisOut
+from app.schemas.common import build
 from app.services import engine, enrichment
 from app.services.lots import get_or_404 as get_lot_or_404
 from app.services.lots import hours_between, utcnow
@@ -157,7 +158,8 @@ def get_or_404(db: Session, caller: Caller, analysis_id: uuid.UUID) -> Analysis:
 
 def to_out(a: Analysis) -> AnalysisOut:
     f, src = a.features, a.feature_sources
-    return AnalysisOut(
+    return build(
+        AnalysisOut,
         id=a.id,
         lot_id=a.lot_id,
         analysis_at=a.analysis_at,

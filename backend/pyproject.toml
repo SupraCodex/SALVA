@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-cov>=5", "ruff==0.17.0"]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff==0.17.0", "mypy>=1.10", "types-PyYAML"]
 lgbm = ["salva-core[lgbm]"]
 
 [tool.setuptools.packages.find]
@@ -45,3 +45,9 @@ ignore = ["B008", "S101"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106", "S107", "S108"]
 "migrations/**" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+exclude = ["migrations/", "tests/"]

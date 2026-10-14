@@ -16,11 +16,14 @@ from app.config import get_settings
 REFRESH_COOKIE = "salva_refresh"
 REFRESH_COOKIE_PATH = "/api/v1/auth"
 # OWASP Password Storage Cheat Sheet minimum for Argon2id: m=19 MiB, t=2, p=1.
-_ARGON2 = {"length": 32, "iterations": 2, "lanes": 1, "memory_cost": 19 * 1024}
+ARGON2_MEMORY_KIB = 19 * 1024
+ARGON2_ITERATIONS = 2
 
 
 def hash_password(password: str) -> str:
-    kdf = Argon2id(salt=os.urandom(16), **_ARGON2)
+    kdf = Argon2id(
+        salt=os.urandom(16), length=32, iterations=ARGON2_ITERATIONS, lanes=1, memory_cost=ARGON2_MEMORY_KIB
+    )
     return kdf.derive_phc_encoded(password.encode("utf-8"))
 
 

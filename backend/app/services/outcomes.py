@@ -14,6 +14,7 @@ from app.db.models import Outcome
 from app.deps import Caller
 from app.errors import ApiError, field_error
 from app.repositories import lots as lots_repo
+from app.schemas.common import build
 from app.schemas.outcome import (
     AnalysisSummaryOut,
     LotHistoryOut,
@@ -99,7 +100,8 @@ def history(db: Session, caller: Caller, lot_id: uuid.UUID) -> LotHistoryOut:
                 None,
             )
             sims.append(
-                SimulationSummaryOut(
+                build(
+                    SimulationSummaryOut,
                     id=run.id,
                     created_at=run.created_at,
                     risk_profile=run.risk_profile,
@@ -113,7 +115,8 @@ def history(db: Session, caller: Caller, lot_id: uuid.UUID) -> LotHistoryOut:
                 )
             )
         analyses.append(
-            AnalysisSummaryOut(
+            build(
+                AnalysisSummaryOut,
                 id=a.id,
                 analysis_at=a.analysis_at,
                 replay=a.replay,
@@ -125,4 +128,4 @@ def history(db: Session, caller: Caller, lot_id: uuid.UUID) -> LotHistoryOut:
                 simulations=sims,
             )
         )
-    return LotHistoryOut(lot_id=lot.id, analyses=analyses, outcomes=lots_repo.outcomes(db, lot.id))
+    return build(LotHistoryOut, lot_id=lot.id, analyses=analyses, outcomes=lots_repo.outcomes(db, lot.id))

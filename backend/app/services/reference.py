@@ -11,6 +11,7 @@ from app.db.models import Market, StorageSite
 from app.deps import Caller
 from app.errors import field_error, not_found
 from app.repositories import reference as ref_repo
+from app.schemas.common import build
 from app.schemas.reference import (
     AssumptionsOut,
     MarketOut,
@@ -41,7 +42,8 @@ def products() -> list[ProductOut]:
         entry = doc.get(code, {})
         label = entry.get("label", {})
         out.append(
-            ProductOut(
+            build(
+                ProductOut,
                 code=code,
                 label_fr=label.get("fr", code),
                 label_en=label.get("en", code),
@@ -52,7 +54,8 @@ def products() -> list[ProductOut]:
 
 
 def market_out(m: Market) -> MarketOut:
-    return MarketOut(
+    return build(
+        MarketOut,
         id=m.id,
         code=m.code,
         name=m.name,
@@ -67,7 +70,8 @@ def market_out(m: Market) -> MarketOut:
 
 
 def site_out(s: StorageSite) -> StorageSiteOut:
-    return StorageSiteOut(
+    return build(
+        StorageSiteOut,
         id=s.id,
         name=s.name,
         location_id=s.location_id,
@@ -197,7 +201,8 @@ def assumptions(db: Session) -> AssumptionsOut:
     model = engine.loss_model(code)
     descriptor = engine.model_descriptor(model)
     registry = engine.registry_info()
-    return AssumptionsOut(
+    return build(
+        AssumptionsOut,
         product=code,
         product_file_sha256=p.file_sha256,
         parameters=parameters,

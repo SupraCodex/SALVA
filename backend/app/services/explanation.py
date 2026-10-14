@@ -19,6 +19,7 @@ from app.llm.explain import explain as run_explain
 from app.llm.providers import get_provider
 from app.llm.schemas import ExplanationFacts, Lang, ScenarioFact
 from app.repositories import lots as lots_repo
+from app.schemas.common import build
 from app.schemas.outcome import ExplanationOut
 from app.services import audit, engine
 
@@ -121,6 +122,8 @@ def fmt_pct(fraction: float | None, lang: Lang) -> str:
 
 def build_facts(run: SimulationRun, lang: Lang) -> ExplanationFacts:
     analysis, reco = run.analysis, run.recommendation
+    if reco is None:
+        raise not_found("Recommendation")
     lot = analysis.lot
     by_key = {s.key: s for s in run.scenarios}
     ranked = [by_key[k] for k in reco.ranked_keys if k in by_key]
@@ -199,6 +202,7 @@ async def explain(db: Session, caller: Caller, reco_id: uuid.UUID, lang: Lang) -
         return cached
     run = reco.simulation_run
     facts = build_facts(run, lang)
+    provider_error: str | None = None
     try:
         provider = get_provider(settings)
     except Exception as exc:  # noqa: BLE001 - misconfiguration (missing key): use the template
@@ -206,8 +210,6 @@ async def explain(db: Session, caller: Caller, reco_id: uuid.UUID, lang: Lang) -
 
         provider = TemplateProvider()
         provider_error = f"provider_unavailable:{type(exc).__name__}"
-    else:
-        provider_error = None
     result = await run_explain(facts, lang, provider, timeout=settings.llm_timeout_s)
     reason = result.rejection_reason or provider_error
     row = Explanation(
@@ -245,7 +247,8 @@ async def explain(db: Session, caller: Caller, reco_id: uuid.UUID, lang: Lang) -
 
 def to_out(e: Explanation) -> ExplanationOut:
     c = e.content
-    return ExplanationOut(
+    return build(
+        ExplanationOut,
         id=e.id,
         recommendation_id=e.recommendation_id,
         lang=e.lang,

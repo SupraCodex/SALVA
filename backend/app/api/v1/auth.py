@@ -38,6 +38,13 @@ def _require_csrf_header(request: Request) -> None:
         raise ApiError(403, "csrf", "Missing X-Requested-With header.")
 
 
+def _current_user(db: Session, caller: Caller) -> User:
+    user = db.get(User, caller.user_id)
+    if user is None:
+        raise ApiError(401, "unauthorized", "Inactive or unknown account.")
+    return user
+
+
 def _token_out(user: User, access: str, ttl: int) -> TokenOut:
     return TokenOut(access_token=access, expires_in=ttl, user=auth_service.me(user))
 
@@ -91,12 +98,12 @@ def logout(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=MeOut, summary="Current user")
 def me(caller: Caller = Depends(get_caller), db: Session = Depends(get_db)):
-    return auth_service.me(db.get(User, caller.user_id))
+    return auth_service.me(_current_user(db, caller))
 
 
 @router.patch("/me", response_model=MeOut, summary="Change the interface language")
 def update_me(data: MeUpdate, caller: Caller = Depends(get_caller), db: Session = Depends(get_db)):
-    user = db.get(User, caller.user_id)
+    user = _current_user(db, caller)
     user.locale = data.locale
     db.commit()
     db.refresh(user)

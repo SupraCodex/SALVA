@@ -42,6 +42,7 @@ from app.schemas.analysis import (
     SimulationCreate,
     SimulationOut,
 )
+from app.schemas.common import build
 from app.services import engine, enrichment
 from app.services.analysis import core_lot
 
@@ -517,7 +518,10 @@ def simulate(db: Session, caller: Caller, analysis_id: uuid.UUID, body: Simulati
     )
     db.commit()
     db.expire_all()
-    return lots_repo.simulation(db, caller.organization_id, run.id)
+    stored = lots_repo.simulation(db, caller.organization_id, run.id)
+    if stored is None:  # pragma: no cover - the row was committed just above
+        raise ApiError(503, "storage-error", "The simulation could not be read back.")
+    return stored
 
 
 def get_or_404(db: Session, caller: Caller, simulation_id: uuid.UUID) -> SimulationRun:
@@ -529,7 +533,8 @@ def get_or_404(db: Session, caller: Caller, simulation_id: uuid.UUID) -> Simulat
 
 def scenario_out(s: Scenario) -> ScenarioOut:
     r = s.results or {}
-    return ScenarioOut(
+    return build(
+        ScenarioOut,
         id=s.id,
         key=s.key,
         action=s.action,
@@ -565,7 +570,8 @@ def recommendation_out(run: SimulationRun) -> RecommendationOut:
     best = next((s for s in run.scenarios if s.id == reco.best_scenario_id), None)
     ranked = [by_key[k].id for k in reco.ranked_keys if k in by_key]
     candidates = ranked[:2] if reco.no_clear_winner else ([best.id] if best else [])
-    return RecommendationOut(
+    return build(
+        RecommendationOut,
         id=reco.id,
         simulation_id=run.id,
         best_scenario_id=best.id if best else None,
@@ -585,7 +591,8 @@ def recommendation_out(run: SimulationRun) -> RecommendationOut:
 
 
 def to_out(run: SimulationRun) -> SimulationOut:
-    return SimulationOut(
+    return build(
+        SimulationOut,
         id=run.id,
         analysis_id=run.analysis_id,
         lot_id=run.analysis.lot_id,
@@ -676,7 +683,8 @@ def sensitivity(db: Session, caller: Caller, simulation_id: uuid.UUID, body: Sen
                 "to_action": action.get(t.to_best_id) if t.to_best_id else None,
             }
         )
-    return SensitivityOut(
+    return build(
+        SensitivityOut,
         simulation_id=run.id,
         n_draws=n,
         seed=run.seed,

@@ -12,6 +12,7 @@ from app.deps import Caller
 from app.errors import ApiError, field_error, not_found
 from app.repositories import lots as lots_repo
 from app.repositories import reference as ref_repo
+from app.schemas.common import build
 from app.schemas.lot import (
     EnrichmentIn,
     EnrichmentOut,
@@ -103,9 +104,10 @@ def to_out(db: Session, lot: Lot) -> LotOut:
         sim = lots_repo.latest_simulation(db, analysis.id)
         reco = sim.recommendation if sim else None
         best = None
-        if reco and reco.best_scenario_id:
+        if sim is not None and reco is not None and reco.best_scenario_id:
             best = next((s for s in sim.scenarios if s.id == reco.best_scenario_id), None)
-        latest = LatestAnalysisOut(
+        latest = build(
+            LatestAnalysisOut,
             id=analysis.id,
             analysis_at=analysis.analysis_at,
             risk_level=analysis.risk_level,
@@ -115,7 +117,8 @@ def to_out(db: Session, lot: Lot) -> LotOut:
             confidence=reco.confidence if reco else None,
             no_clear_winner=reco.no_clear_winner if reco else None,
         )
-    return LotOut(
+    return build(
+        LotOut,
         id=lot.id,
         product_code=lot.product_code,
         quantity_kg=lot.quantity_kg,
@@ -150,7 +153,8 @@ def preview_enrichment(db: Session, data: EnrichmentIn) -> EnrichmentOut:
     suggested = data.harvested_at + timedelta(hours=leg.hours) if leg.hours > 0 else None
     end = data.eta_current_at or suggested or data.harvested_at + timedelta(hours=24)
     temp = enrichment.temperature_for(origin, market, data.harvested_at, max(end, utcnow()), None)
-    return EnrichmentOut(
+    return build(
+        EnrichmentOut,
         temperature={"value": temp.mean.value, "source": temp.mean.source},
         temperature_available=temp.automatic,
         diurnal_amp_c={

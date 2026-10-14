@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.db.models import Organization, RefreshToken, User
 from app.errors import ApiError, not_found
 from app.schemas.auth import MeOut, RegisterIn, UserCreate, UserUpdate
+from app.schemas.common import build
 from app.security import (
     DUMMY_HASH,
     create_access_token,
@@ -39,7 +40,8 @@ LOCKOUT_WINDOW_S = 15 * 60
 
 
 def me(user: User) -> MeOut:
-    return MeOut(
+    return build(
+        MeOut,
         id=user.id,
         email=user.email,
         role=user.role,

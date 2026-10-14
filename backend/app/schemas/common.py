@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -36,3 +37,11 @@ def normalize_email(value: str) -> str:
     if len(value) > 254 or not EMAIL_RE.match(value):
         raise ValueError("invalid e-mail address")
     return value
+
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+def build(model: type[ModelT], /, **data: Any) -> ModelT:
+    """Validate keyword data into ``model`` (lets stored JSON and enums flow through validation)."""
+    return model.model_validate(data)
