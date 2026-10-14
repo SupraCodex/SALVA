@@ -28,6 +28,8 @@ devpost/learner-profile.md
 # Frontend
 node_modules/
 .next/
+frontend/dist/
+*.tsbuildinfo
 
 # OS / editors
 .DS_Store
