@@ -6,6 +6,7 @@ import { addHours, fcfa, fromLocalInput, hours, num, toLocalInput } from "../lib
 import { toApiError, useApi } from "../lib/hooks";
 import { fieldErrors, useI18n } from "../lib/i18n";
 import { useRouter } from "../lib/router";
+import { marketPrice } from "../lib/types";
 import type { Enrichment, Location, Lot, Market, Maturity, Packaging } from "../lib/types";
 
 interface FormState {
@@ -100,7 +101,6 @@ export function NewLot() {
       etaTouched.current = true;
     }
     // Only when the reference data arrives or the example is requested.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations.data, markets.data]);
 
   useEffect(() => saveDraft(form), [form]);
@@ -391,7 +391,7 @@ export function NewLot() {
             </Field>
             <Field
               label={t("form.price")}
-              hint={t("form.priceHelp", { price: market ? `${fcfa(market.ref_price_fcfa_kg, lang)}/kg` : "–" })}
+              hint={t("form.priceHelp", { price: market ? `${fcfa(marketPrice(market), lang)}/kg` : "–" })}
               error={errors.price_override_fcfa_kg}
               optional
             >

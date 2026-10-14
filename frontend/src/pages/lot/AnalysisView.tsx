@@ -6,6 +6,7 @@ import { api, ApiError } from "../../lib/api";
 import { dateTime, fcfa, fromLocalInput, hours, num, toLocalInput } from "../../lib/format";
 import { toApiError } from "../../lib/hooks";
 import { fieldErrors, useI18n } from "../../lib/i18n";
+import { Link } from "../../lib/router";
 import type { Analysis } from "../../lib/types";
 import type { LotContext } from "../LotHub";
 
@@ -132,9 +133,14 @@ export function AnalysisView({ ctx }: { ctx: LotContext }) {
 
       <div className="next-step">
         {controls}
-        <button type="button" className="button button--primary" onClick={() => ctx.go("simulation")}>
-          {t("analysis.simulate")}
-        </button>
+        <div className="row-actions">
+          <Link to="/assumptions" className="button button--quiet">
+            {t("analysis.seeAssumptions")}
+          </Link>
+          <button type="button" className="button button--primary" onClick={() => ctx.go("simulation")}>
+            {t("analysis.simulate")}
+          </button>
+        </div>
       </div>
     </div>
   );

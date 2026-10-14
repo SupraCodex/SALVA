@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 
+import { AskPanel } from "../../components/AskPanel";
 import { AllocationBar } from "../../components/charts";
 import { ScenarioCard } from "../../components/scenarios";
 import { ErrorState, Field, Input, Notice, Select, Spinner } from "../../components/ui";
 import { api, ApiError } from "../../lib/api";
 import { fcfa, kg, pct } from "../../lib/format";
 import { toApiError, useApi } from "../../lib/hooks";
+import { Link } from "../../lib/router";
 import { fieldErrors, useI18n } from "../../lib/i18n";
 import type { Action, Explanation, LotHistory, Outcome } from "../../lib/types";
 import type { LotContext } from "../LotHub";
@@ -206,6 +208,11 @@ export function RecommendationView({ ctx }: { ctx: LotContext }) {
     .filter((s): s is NonNullable<typeof s> => Boolean(s));
   const leastBad = reco.rationale_codes.includes("ALL_OPTIONS_DISCOURAGED") && best !== null;
   const reasons = reco.rationale_codes.filter((c) => !["ALL_OPTIONS_DISCOURAGED", "HEAVY_LOSSES_LIKELY", "NO_CLEAR_WINNER"].includes(c));
+  const asPlanned = simulation.scenarios.find((s) => s.action === "continue" && s.feasible) ?? null;
+  const gain =
+    best && asPlanned && best.id !== asPlanned.id && best.net_value_fcfa.p50 !== null && asPlanned.net_value_fcfa.p50 !== null
+      ? best.net_value_fcfa.p50 - asPlanned.net_value_fcfa.p50
+      : null;
 
   return (
     <div className="recommendation">
@@ -223,6 +230,10 @@ export function RecommendationView({ ctx }: { ctx: LotContext }) {
               p: pct(reco.prob_best, lang),
             })}
           </p>
+          {gain !== null && gain > 0 && (
+            <p className="banner__impact">{t("reco.vsContinue", { market: lot.destination_name, diff: fcfa(gain, lang) })}</p>
+          )}
+          {asPlanned && best.id === asPlanned.id && <p className="banner__impact">{t("reco.vsContinueSame")}</p>}
           {best.action === "optimized_split" && <AllocationBar scenario={best} total={lot.quantity_kg} lang={lang} />}
           {leastBad && <Notice tone="warn">{t("reco.leastBad")}</Notice>}
           {reco.low_risk && <Notice tone="ok">{t("analysis.lowRisk")}</Notice>}
@@ -245,7 +256,18 @@ export function RecommendationView({ ctx }: { ctx: LotContext }) {
         </section>
       )}
       {!best && !(reco.no_clear_winner && candidates.length >= 2) && <Notice tone="warn">{t("reco.nothing")}</Notice>}
+      <div className="row-actions">
+        {lot.status !== "closed" && (
+          <button type="button" className="button button--quiet" onClick={() => ctx.go("simulation")}>
+            {t("reco.redo")}
+          </button>
+        )}
+        <Link to="/assumptions" className="button button--quiet">
+          {t("reco.seeAssumptions")}
+        </Link>
+      </div>
       <ExplanationPanel recommendationId={reco.id} />
+      <AskPanel analysisId={simulation.analysis_id} simulationId={simulation.id} />
       <OutcomeForms ctx={ctx} />
     </div>
   );

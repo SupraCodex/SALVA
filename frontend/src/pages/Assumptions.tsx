@@ -15,7 +15,7 @@ function show(value: unknown, lang: "fr" | "en"): string {
   return String(value);
 }
 
-/** Model, parameters, sources and known limits, readable without an account role (FR-16). */
+/** Model, parameters, sources and known limits, readable by every role (FR-22). */
 export function Assumptions() {
   const { t, td, lang } = useI18n();
   const data = useApi<AssumptionsData>("/assumptions");

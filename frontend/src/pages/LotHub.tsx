@@ -116,7 +116,6 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
       cancelled = true;
     };
     // Reload results only when the latest identifiers change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latestAnalysisId, latestSimulationId, lot === null]);
 
   const go = useCallback((next: Tab) => navigate(`/lots/${id}/${next}`), [id, navigate]);
