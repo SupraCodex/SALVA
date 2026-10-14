@@ -109,3 +109,32 @@ def test_mobile_360px_has_no_horizontal_scroll(mobile: Page):
     assert all(w <= 360 for w in widths.values()), widths
     mobile.get_by_role("button", name="Menu").click()
     expect(mobile.get_by_role("link", name="Assumptions", exact=True)).to_be_visible()
+
+
+def test_question_about_the_analysis_is_simulated(page: Page):
+    """FR-18: a "what if" question is answered by the simulation engine."""
+    register(page)
+    create_example_lot(page)
+    page.get_by_role("button", name="Compare decisions").click()
+    page.get_by_role("button", name="Simulate the decisions").click()
+    expect(page.locator(".scenario").first).to_be_visible(timeout=30_000)
+    page.get_by_role("button", name="See the recommendation").click()
+    page.get_by_label("Your question").fill("What if the delay were 24 hours?")
+    page.get_by_role("button", name="Ask", exact=True).click()
+    answer = page.locator(".ask__answer").first
+    expect(answer).to_contain_text("With a 24 h delay", timeout=30_000)
+    expect(answer).to_contain_text("This test is not saved")
+    expect(answer).not_to_contain_text("- FCFA")
+
+
+def test_admin_market_value_is_used_in_the_form(page: Page):
+    """FR-20: the organization's price for a market replaces the reference price."""
+    register(page)
+    page.goto(f"{BASE_URL}/admin")
+    row = page.locator(".market-row", has_text="Marché Mboppi")
+    row.get_by_label("Your price (FCFA/kg)").fill("640")
+    row.get_by_role("button", name="Save").click()
+    expect(page.get_by_text("Market values saved.")).to_be_visible()
+    create_example_lot(page)
+    expect(page.locator(".facts")).to_contain_text("640")
+    expect(page.locator(".facts")).to_contain_text("your organization's value")

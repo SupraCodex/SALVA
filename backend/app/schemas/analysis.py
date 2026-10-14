@@ -179,3 +179,35 @@ class SensitivityOut(Out):
     points: list[SensitivityPointOut]
     transitions: list[SensitivityTransitionOut]
     disclaimer_code: str = DISCLAIMER_CODE
+
+
+QuestionKind = Literal[
+    "what_if", "risk", "recommendation", "why", "uncertainty", "assumptions", "unsupported"
+]
+
+
+class QuestionIn(StrictIn):
+    """A question about one analysis (FR-18). Free text, never sent to a language model."""
+
+    question: str = Field(min_length=3, max_length=300)
+    lang: Literal["fr", "en"] = "fr"
+    simulation_id: uuid.UUID | None = None
+
+
+class WhatIfOut(Out):
+    changes: dict[str, Any]
+    best_label: dict[str, str] | None
+    best_action: str | None
+    confidence: str
+    no_clear_winner: bool
+    net_value_fcfa: Quantiles
+    loss_fraction: Quantiles
+    current_best_label: dict[str, str] | None
+    current_net_p50_fcfa: float | None
+
+
+class QuestionOut(Out):
+    kind: QuestionKind
+    answer: str
+    what_if: WhatIfOut | None = None
+    disclaimer_code: str = DISCLAIMER_CODE

@@ -45,6 +45,7 @@ from app.schemas.analysis import (
 from app.schemas.common import build
 from app.services import engine, enrichment
 from app.services.analysis import core_lot
+from app.services.enrichment import ORGANIZATION_SOURCE
 
 RISK_PROFILES = {"prudent": 0.8, "balanced": 0.5, "ambitious": 0.2}
 ACTION_LABELS = {
@@ -128,16 +129,30 @@ def build_plan(db: Session, lot: Lot, analysis: Analysis, body: SimulationCreate
         over.transport_fcfa_kg_km if over.transport_fcfa_kg_km is not None else settings.transport_fcfa_kg_km
     )
 
-    def core_market(m: Market) -> CoreMarket:
+    org_settings = ref_repo.market_settings(db, lot.organization_id)
+
+    def price_of(m: Market) -> tuple[float, str]:
         o = over.markets.get(m.id)
+        setting = org_settings.get(m.id)
         if o and o.price_fcfa_kg is not None:
-            price = float(o.price_fcfa_kg)
-        elif m.id == lot.destination_market_id and lot.price_override_fcfa_kg is not None:
-            price = float(lot.price_override_fcfa_kg)
-        else:
-            price = float(m.ref_price_fcfa_kg)
-        absorb = float(o.absorption_kg) if o and o.absorption_kg is not None else float(m.absorption_kg_day)
-        return CoreMarket(market_index[m.id], m.name, price, absorb)
+            return float(o.price_fcfa_kg), "user"
+        if m.id == lot.destination_market_id and lot.price_override_fcfa_kg is not None:
+            return float(lot.price_override_fcfa_kg), "manual (lot)"
+        if setting is not None and setting.price_fcfa_kg is not None:
+            return float(setting.price_fcfa_kg), ORGANIZATION_SOURCE
+        return float(m.ref_price_fcfa_kg), f"reference: {m.assumption_note}"
+
+    def absorption_of(m: Market) -> tuple[float, str]:
+        o = over.markets.get(m.id)
+        setting = org_settings.get(m.id)
+        if o and o.absorption_kg is not None:
+            return float(o.absorption_kg), "user"
+        if setting is not None and setting.absorption_kg_day is not None:
+            return float(setting.absorption_kg_day), ORGANIZATION_SOURCE
+        return float(m.absorption_kg_day), f"reference: {m.assumption_note}"
+
+    def core_market(m: Market) -> CoreMarket:
+        return CoreMarket(market_index[m.id], m.name, price_of(m)[0], absorption_of(m)[0])
 
     origin = lot.origin
     dest = lot.destination
@@ -316,20 +331,12 @@ def build_plan(db: Session, lot: Lot, analysis: Analysis, body: SimulationCreate
     involved = {meta_item.market.id: meta_item.market for meta_item in meta.values()}
     for m in sorted(involved.values(), key=lambda m: m.code):
         o = over.markets.get(m.id)
-        cm = core_market(m)
-        price_src = (
-            "manual (lot)"
-            if m.id == dest.id
-            and lot.price_override_fcfa_kg is not None
-            and not (o and o.price_fcfa_kg is not None)
-            else "user"
-            if o and o.price_fcfa_kg is not None
-            else f"reference: {m.assumption_note}"
-        )
+        price, price_src = price_of(m)
+        absorb, absorb_src = absorption_of(m)
         assumptions.append(
             _assumption(
                 f"price_fcfa_kg:{m.code}",
-                cm.price,
+                price,
                 "FCFA/kg",
                 price_src,
                 bool(o and o.price_fcfa_kg is not None),
@@ -338,9 +345,9 @@ def build_plan(db: Session, lot: Lot, analysis: Analysis, body: SimulationCreate
         assumptions.append(
             _assumption(
                 f"absorption_kg:{m.code}",
-                cm.absorb_kg,
+                absorb,
                 "kg",
-                "user" if o and o.absorption_kg is not None else f"reference: {m.assumption_note}",
+                absorb_src,
                 bool(o and o.absorption_kg is not None),
             )
         )
@@ -368,7 +375,7 @@ def build_plan(db: Session, lot: Lot, analysis: Analysis, body: SimulationCreate
     return Plan(options, meta, unavailable, assumptions, market_index)
 
 
-def _params_for(lot: Lot, body: SimulationCreate):
+def params_for(lot: Lot, body: SimulationCreate):
     p = engine.params(lot.product_code)
     if body.assumptions.surplus_price_fraction is not None:
         p = replace(p, delta=float(body.assumptions.surplus_price_fraction))
@@ -396,7 +403,7 @@ def simulate(db: Session, caller: Caller, analysis_id: uuid.UUID, body: Simulati
     seed = settings.seed if body.seed is None else body.seed
     started = time.perf_counter()
     plan = build_plan(db, lot, analysis, body)
-    p = _params_for(lot, body)
+    p = params_for(lot, body)
     model = engine.loss_model(lot.product_code)
     clot = core_lot(lot, analysis)
     policy = Policy(lam=RISK_PROFILES[body.risk_profile])
@@ -618,7 +625,7 @@ def sensitivity(db: Session, caller: Caller, simulation_id: uuid.UUID, body: Sen
     lot = analysis.lot
     request = SimulationCreate.model_validate(run.request)
     plan = build_plan(db, lot, analysis, request)
-    p = _params_for(lot, request)
+    p = params_for(lot, request)
     model = engine.loss_model(lot.product_code)
     clot = core_lot(lot, analysis)
     temps = body.temperatures_c or _grid(clot.temp_c, (-6, -3, 0, 3, 6), 5.0, 45.0)

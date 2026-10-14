@@ -11,8 +11,10 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.config import get_settings
-from app.db.models import Location, Lot, Market
+from app.db.models import Location, Lot, Market, MarketSetting
 from app.integrations import routing, weather
+
+ORGANIZATION_SOURCE = "organization setting"
 
 
 @dataclass(frozen=True)
@@ -78,13 +80,17 @@ def temperature(lot: Lot, now: datetime) -> Temperature:
     return temperature_for(lot.origin, lot.destination, lot.harvested_at, end, lot.temp_override_c)
 
 
-def price(lot: Lot) -> Value:
+def price(lot: Lot, setting: MarketSetting | None = None) -> Value:
+    """Selling price at the destination: the lot's own price, the organization's, or the reference."""
     if lot.price_override_fcfa_kg is not None:
         return Value(float(lot.price_override_fcfa_kg), "manual")
-    return Value(
-        float(lot.destination.ref_price_fcfa_kg),
-        f"reference: {lot.destination.assumption_note}",
-    )
+    return market_price(lot.destination, setting)
+
+
+def market_price(market: Market, setting: MarketSetting | None = None) -> Value:
+    if setting is not None and setting.price_fcfa_kg is not None:
+        return Value(float(setting.price_fcfa_kg), ORGANIZATION_SOURCE)
+    return Value(float(market.ref_price_fcfa_kg), f"reference: {market.assumption_note}")
 
 
 def route(origin: Location, destination: Market) -> routing.Leg:

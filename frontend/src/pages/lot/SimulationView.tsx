@@ -7,6 +7,7 @@ import { api, ApiError } from "../../lib/api";
 import { fcfa, hours, kg, num } from "../../lib/format";
 import { toApiError, useApi } from "../../lib/hooks";
 import { useI18n } from "../../lib/i18n";
+import { marketAbsorption, marketPrice } from "../../lib/types";
 import type { Assumption, Market, RiskProfile, Sensitivity, Simulation, SimulationRequest } from "../../lib/types";
 import type { LotContext } from "../LotHub";
 
@@ -220,15 +221,15 @@ export function SimulationView({ ctx }: { ctx: LotContext }) {
       {profilePicker}
       {involved.map((m) => (
         <div className="grid-2" key={m.id}>
-          <Field label={t("sim.marketPrice", { market: m.name })} hint={`${t("assumptions.reference")}${lang === "fr" ? " : " : ": "}${fcfa(m.ref_price_fcfa_kg, lang)}`} optional>
+          <Field label={t("sim.marketPrice", { market: m.name })} hint={`${m.org_price_fcfa_kg !== null ? t("source.organization") : t("assumptions.reference")}${lang === "fr" ? " : " : ": "}${fcfa(marketPrice(m), lang)}`} optional>
             {(p) => (
-              <Input {...p} type="number" min={1} value={currentDraft.markets[m.id]?.price ?? ""} placeholder={String(m.ref_price_fcfa_kg)}
+              <Input {...p} type="number" min={1} value={currentDraft.markets[m.id]?.price ?? ""} placeholder={String(marketPrice(m))}
                 onChange={(e) => updateMarket(m.id, "price", e.target.value)} />
             )}
           </Field>
           <Field label={t("sim.marketAbsorption", { market: m.name })} hint={t("sim.absorptionHelp")} optional>
             {(p) => (
-              <Input {...p} type="number" min={0} value={currentDraft.markets[m.id]?.absorption ?? ""} placeholder={String(m.absorption_kg_day)}
+              <Input {...p} type="number" min={0} value={currentDraft.markets[m.id]?.absorption ?? ""} placeholder={String(marketAbsorption(m))}
                 onChange={(e) => updateMarket(m.id, "absorption", e.target.value)} />
             )}
           </Field>

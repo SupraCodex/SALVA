@@ -100,6 +100,25 @@ class Market(Base):
     )
 
 
+class MarketSetting(Base):
+    """An organization's own price and absorption for a reference market (FR-20)."""
+
+    __tablename__ = "market_settings"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    market_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("markets.id", ondelete="CASCADE"), nullable=False)
+    price_fcfa_kg: Mapped[float | None] = mapped_column(Float)
+    absorption_kg_day: Mapped[float | None] = mapped_column(Float)
+    updated_at: Mapped[datetime] = created_at()
+    __table_args__ = (
+        Index("uq_market_settings_org_market", "organization_id", "market_id", unique=True),
+        CheckConstraint("price_fcfa_kg IS NULL OR price_fcfa_kg > 0", name="price"),
+        CheckConstraint("absorption_kg_day IS NULL OR absorption_kg_day >= 0", name="absorption"),
+    )
+
+
 class StorageSite(Base):
     __tablename__ = "storage_sites"
     id: Mapped[uuid.UUID] = uuid_pk()

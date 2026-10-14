@@ -1,5 +1,5 @@
 location_id,nom,type,latitude,longitude,capacite_stockage_kg,source,date_source
-L01,Zone de production de Dschang,depart,5.4430,10.0530,0,hypothese: lieu de depart du scenario de demonstration ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
-L02,Relais de stockage de Bafang,stockage,5.1560,10.1800,500,hypothese: capacite a confirmer aupres d'un operateur local ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
-L03,Relais de stockage de Nkongsamba,stockage,4.9550,9.9400,800,hypothese: capacite a confirmer aupres d'un operateur local ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
-L04,Entrepot de Douala (zone Bassa),stockage,4.0500,9.7400,1500,hypothese: capacite a confirmer aupres d'un operateur local ; coordonnees approximatives a verifier sur OpenStreetMap,2026-10-11
+L01,Zone de production de Dschang,depart,5.4430,10.0530,0,hypothèse: lieu de départ du scénario de démonstration ; coordonnées approximatives à vérifier sur OpenStreetMap,2026-10-11
+L02,Relais de stockage de Bafang,stockage,5.1560,10.1800,500,hypothèse: capacité à confirmer auprès d'un opérateur local ; coordonnées approximatives à vérifier sur OpenStreetMap,2026-10-11
+L03,Relais de stockage de Nkongsamba,stockage,4.9550,9.9400,800,hypothèse: capacité à confirmer auprès d'un opérateur local ; coordonnées approximatives à vérifier sur OpenStreetMap,2026-10-11
+L04,Entrepôt de Douala (zone Bassa),stockage,4.0500,9.7400,1500,hypothèse: capacité à confirmer auprès d'un opérateur local ; coordonnées approximatives à vérifier sur OpenStreetMap,2026-10-11

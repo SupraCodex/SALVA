@@ -48,7 +48,7 @@ fallback, decision and result recording, French and English, accounts per organi
 
 ## Later
 Other products (plantain, fresh fish) as configuration; field calibration of the parameters;
-live truck position; questions about an analysis (FR-18); market management by administrators.
+live truck position.
 
 ## Explicitly Cut
 - Sensors and IoT: the target users do not have them.

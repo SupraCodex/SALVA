@@ -30,9 +30,14 @@ Built for the Devpost hackathon *Build With AI: Basics* by the SupraCodex team.
    confidence, an explicit "no clear winner" or "least bad option" when relevant, and a checked
    explanation (template by default; Gemini or an OpenAI-compatible model if configured, with
    every number verified against the computed facts).
-5. **Follow-up**: record the decision taken and the real result; history per lot.
+5. **Questions**: ask about the analysis in plain words. "What if" questions on the delay,
+   temperature, packaging or maturity are run through the simulation engine (nothing is saved);
+   questions on the risk, the recommendation and its reasons are answered from the stored
+   results. The question is never sent to a language model.
+6. **Follow-up**: record the decision taken and the real result; history per lot.
 
-Also: organizations with administrator and operator roles, storage sites, an assumptions page
+Also: organizations with administrator and operator roles, storage sites and the
+organization's own market prices and absorption, an assumptions page
 listing every parameter with its source and the known limits, French and English interface,
 usable on a 360 px wide phone.
 
@@ -58,7 +63,7 @@ Demo walkthrough and video plan: [docs/demo-script.md](docs/demo-script.md).
 | `ml/` | Offline pipeline: synthetic data, validation, training, evaluation with a GO/NO-GO gate, packaging |
 | `data/reference/` | Product parameters, locations, markets, distances (with sources and assumption notes) |
 | `e2e/` | Browser scenarios (Playwright) |
-| `docs/` | Architecture, model card, security, runbook, decisions, traceability, hackathon rules |
+| `docs/` | Architecture, model card, security, runbook, decisions, requirements traceability, hackathon rules, and the team's design document (`docs/design/`, French, revision 1.1) |
 | `devpost/` | Skill Pack planning documents (scope, PRD, spec) |
 
 ## Quality

@@ -27,7 +27,9 @@ verified facts and links so the text you write is accurate. Do not paste it as i
   coverage, decision agreement (0.945) and latency pass; monotonicity fails, so it is NO-GO and
   stays experimental (`docs/model-card.md`).
 - Interface in French and English, works at 360 px width; organizations, roles, storage sites.
-- Tests: core, ML pipeline, backend on PostgreSQL, frontend unit tests, six browser scenarios.
+- Questions about an analysis: "what if" questions are simulated by the engine, never answered by
+  free text generation.
+- Tests: core, ML pipeline, backend on PostgreSQL, frontend unit tests, eight browser scenarios.
 
 ## Facts you must not claim
 

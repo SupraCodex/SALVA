@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.db.models import Market, StorageSite
+from app.db.models import Market, MarketSetting, StorageSite
 from app.deps import Caller
 from app.errors import field_error, not_found
 from app.repositories import reference as ref_repo
@@ -15,6 +16,7 @@ from app.schemas.common import build
 from app.schemas.reference import (
     AssumptionsOut,
     MarketOut,
+    MarketSettingIn,
     ProductOut,
     StorageSiteIn,
     StorageSiteOut,
@@ -53,7 +55,7 @@ def products() -> list[ProductOut]:
     return out
 
 
-def market_out(m: Market) -> MarketOut:
+def market_out(m: Market, setting: MarketSetting | None = None) -> MarketOut:
     return build(
         MarketOut,
         id=m.id,
@@ -66,7 +68,41 @@ def market_out(m: Market) -> MarketOut:
         ref_price_fcfa_kg=m.ref_price_fcfa_kg,
         absorption_kg_day=m.absorption_kg_day,
         assumption_note=m.assumption_note,
+        org_price_fcfa_kg=setting.price_fcfa_kg if setting else None,
+        org_absorption_kg_day=setting.absorption_kg_day if setting else None,
     )
+
+
+def markets(db: Session, caller: Caller) -> list[MarketOut]:
+    settings = ref_repo.market_settings(db, caller.organization_id)
+    return [market_out(m, settings.get(m.id)) for m in ref_repo.markets(db)]
+
+
+def update_market_setting(
+    db: Session, caller: Caller, market_id: uuid.UUID, data: MarketSettingIn
+) -> MarketOut:
+    market = ref_repo.market(db, market_id)
+    if market is None:
+        raise not_found("Market")
+    setting = ref_repo.market_setting(db, caller.organization_id, market_id)
+    if setting is None:
+        setting = MarketSetting(organization_id=caller.organization_id, market_id=market_id)
+        db.add(setting)
+    for key in data.model_fields_set:
+        setattr(setting, key, getattr(data, key))
+    setting.updated_at = datetime.now(UTC)
+    audit.record(
+        db,
+        "market_setting_updated",
+        "market",
+        market.id,
+        organization_id=caller.organization_id,
+        user_id=caller.user_id,
+        detail={"fields": sorted(data.model_fields_set)},
+    )
+    db.commit()
+    db.refresh(setting)
+    return market_out(market, setting)
 
 
 def site_out(s: StorageSite) -> StorageSiteOut:

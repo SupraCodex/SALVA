@@ -6,7 +6,7 @@ import { useAuth } from "../lib/auth";
 import { dateTime, fcfa, kg } from "../lib/format";
 import { toApiError, useApi } from "../lib/hooks";
 import { fieldErrors, useI18n } from "../lib/i18n";
-import type { Location, StorageSite, UserRow } from "../lib/types";
+import type { Location, Market, StorageSite, UserRow } from "../lib/types";
 
 type Mode = StorageSite["temp_mode"];
 const MODES: Mode[] = ["ambient_shade", "ventilated", "cold_room"];
@@ -174,6 +174,109 @@ function StorageSites() {
   );
 }
 
+function MarketRow({ market, onSaved }: { market: Market; onSaved: (m: Market) => void }) {
+  const { t, td, lang } = useI18n();
+  const [price, setPrice] = useState(market.org_price_fcfa_kg?.toString() ?? "");
+  const [absorption, setAbsorption] = useState(market.org_absorption_kg_day?.toString() ?? "");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+
+  const save = async (body: { price_fcfa_kg: number | null; absorption_kg_day: number | null }) => {
+    setBusy(true);
+    setErrors({});
+    try {
+      const updated = await api<Market>(`/markets/${market.id}`, { method: "PATCH", body });
+      setPrice(updated.org_price_fcfa_kg?.toString() ?? "");
+      setAbsorption(updated.org_absorption_kg_day?.toString() ?? "");
+      onSaved(updated);
+    } catch (err) {
+      const e = toApiError(err);
+      const mapped = fieldErrors(e.errors, td);
+      setErrors(Object.keys(mapped).length ? mapped : { _: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const local: Record<string, string> = {};
+    if (price && !(Number(price) > 0)) local.price_fcfa_kg = t("err.greater_than", { limit: 0 });
+    if (absorption && !(Number(absorption) >= 0)) local.absorption_kg_day = t("err.greater_than_equal", { limit: 0 });
+    if (Object.keys(local).length) {
+      setErrors(local);
+      return;
+    }
+    save({ price_fcfa_kg: price ? Number(price) : null, absorption_kg_day: absorption ? Number(absorption) : null });
+  };
+
+  return (
+    <li className="market-row">
+      <form className="market-row__form" onSubmit={submit} noValidate>
+        <div className="market-row__name">
+          <strong>{market.name}</strong> <span className="muted">({market.city})</span>
+          <span className="muted small">
+            {t("admin.markets.reference")}
+            {lang === "fr" ? " : " : ": "}
+            {fcfa(market.ref_price_fcfa_kg, lang)}/kg, {kg(market.absorption_kg_day, lang)}
+            {lang === "fr" ? "/jour" : "/day"}
+          </span>
+        </div>
+        <Field label={t("admin.markets.price")} error={errors.price_fcfa_kg} optional>
+          {(p) => (
+            <Input {...p} type="number" min={1} inputMode="decimal" value={price}
+              placeholder={String(market.ref_price_fcfa_kg)} onChange={(e) => setPrice(e.target.value)} />
+          )}
+        </Field>
+        <Field label={t("admin.markets.absorption")} error={errors.absorption_kg_day} optional>
+          {(p) => (
+            <Input {...p} type="number" min={0} inputMode="decimal" value={absorption}
+              placeholder={String(market.absorption_kg_day)} onChange={(e) => setAbsorption(e.target.value)} />
+          )}
+        </Field>
+        <div className="row-actions">
+          <button type="submit" className="button button--primary button--small" disabled={busy}>
+            {t("admin.markets.save")}
+          </button>
+          {(market.org_price_fcfa_kg !== null || market.org_absorption_kg_day !== null) && (
+            <button type="button" className="button button--quiet button--small" disabled={busy}
+              onClick={() => save({ price_fcfa_kg: null, absorption_kg_day: null })}>
+              {t("admin.markets.reset")}
+            </button>
+          )}
+        </div>
+        {errors._ && <p className="field__error">{errors._}</p>}
+      </form>
+    </li>
+  );
+}
+
+function Markets() {
+  const { t } = useI18n();
+  const markets = useApi<Market[]>("/markets");
+  const [message, setMessage] = useState<string | null>(null);
+  const replace = (m: Market) => {
+    markets.setData((markets.data ?? []).map((x) => (x.id === m.id ? m : x)));
+    setMessage(t("admin.markets.saved"));
+  };
+  return (
+    <section className="panel" aria-labelledby="markets-title">
+      <h2 id="markets-title">{t("admin.markets.title")}</h2>
+      <p className="muted">{t("admin.markets.intro")}</p>
+      {message && <Notice tone="ok">{message}</Notice>}
+      {markets.error && <ErrorState error={markets.error} onRetry={markets.reload} />}
+      {!markets.data && !markets.error && <Skeleton lines={3} />}
+      {markets.data && (
+        <ul className="market-list">
+          {markets.data.map((m) => (
+            <MarketRow key={m.id} market={m} onSaved={replace} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function Users() {
   const { t, lang } = useI18n();
   const { user } = useAuth();
@@ -309,6 +412,7 @@ export function Admin() {
     <div className="page">
       <h1>{t("admin.title")}</h1>
       <StorageSites />
+      <Markets />
       <Users />
     </div>
   );

@@ -53,6 +53,17 @@ export interface Market {
   ref_price_fcfa_kg: number;
   absorption_kg_day: number;
   assumption_note: string;
+  org_price_fcfa_kg: number | null;
+  org_absorption_kg_day: number | null;
+}
+
+/** Price and absorption actually used for an organization: its own value, else the reference. */
+export function marketPrice(m: Market): number {
+  return m.org_price_fcfa_kg ?? m.ref_price_fcfa_kg;
+}
+
+export function marketAbsorption(m: Market): number {
+  return m.org_absorption_kg_day ?? m.absorption_kg_day;
 }
 
 export interface StorageSite {
@@ -363,4 +374,20 @@ export interface Health {
   llm_provider: string;
   weather_enabled: boolean;
   model: { name: string; version: string; fallback: boolean } | null;
+}
+
+export interface QuestionAnswer {
+  kind: "what_if" | "risk" | "recommendation" | "why" | "uncertainty" | "assumptions" | "unsupported";
+  answer: string;
+  what_if: {
+    changes: Record<string, number | string>;
+    best_label: { fr: string; en: string } | null;
+    best_action: Action | null;
+    confidence: Confidence;
+    no_clear_winner: boolean;
+    net_value_fcfa: Quantiles;
+    loss_fraction: Quantiles;
+    current_best_label: { fr: string; en: string } | null;
+    current_net_p50_fcfa: number | null;
+  } | null;
 }

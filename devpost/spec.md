@@ -44,17 +44,17 @@ central tick, plain sentence-case copy in French and English.
 Kinetics, features, loss models, simulation, allocation, recommendation, sensitivity. No I/O.
 PRD ref: `prd.md > Features and Behavior`.
 ### backend/ (API)
-Authentication, organizations, lots, enrichment, analyses, simulations, explanations, outcomes,
-administration, health. PRD ref: `prd.md > The Core Journey`.
+Authentication, organizations, lots, enrichment, analyses, simulations, explanations, questions,
+outcomes, administration (storage sites, users, market values), health. PRD ref: `prd.md > The Core Journey`.
 ### frontend/ (interface)
 Pages listed in `prd.md > Screens and Layout`.
 ### ml/ (offline)
 Synthetic data generation, training, evaluation with a GO/NO-GO gate, packaging, registry.
 
 ## Data Model
-Organizations, users, refresh tokens, locations, markets, storage sites, lots, analyses,
-simulation runs, scenarios, recommendations, explanations, outcomes, audit log (PostgreSQL,
-migration `backend/migrations/versions/0001_initial_schema.py`). Everything persists between
+Organizations, users, refresh tokens, locations, markets, organization market settings, storage
+sites, lots, analyses, simulation runs, scenarios, recommendations, explanations, outcomes, audit
+log (PostgreSQL, Alembic migrations in `backend/migrations/versions/`). Everything persists between
 sessions; the access token lives only in memory and is renewed from an HttpOnly cookie.
 
 ## File Structure
@@ -86,4 +86,4 @@ salva/
 - **In-memory rate limiting** instead of a shared store: one instance is enough for the POC.
 
 ## Decisions and Open Issues
-See `docs/decisions.md`. Open: field validation, FR-18, market administration.
+See `docs/decisions.md`. Open: field validation with traders, transporters and observed lots.

@@ -176,6 +176,9 @@ export function SourceBadge({ source }: { source: string }) {
   } else if (s === "user") {
     key = "source.user";
     tone = "manual";
+  } else if (s.startsWith("organization")) {
+    key = "source.organization";
+    tone = "manual";
   } else if (s.startsWith("reference")) {
     key = "source.reference";
   } else if (s.startsWith("distances.csv")) {

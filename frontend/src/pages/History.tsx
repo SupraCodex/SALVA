@@ -7,7 +7,7 @@ import { useI18n } from "../lib/i18n";
 import type { Lot, LotList } from "../lib/types";
 import { LotRow } from "./Dashboard";
 
-/** Every lot of the organization, each opening on its follow-up tab (FR-15). */
+/** Every lot of the organization, each opening on its follow-up tab (FR-14). */
 export function History() {
   const { t } = useI18n();
   const [closedOnly, setClosedOnly] = useState(false);

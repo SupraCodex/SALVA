@@ -9,8 +9,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from app import errors
 from app import logging as app_logging
@@ -53,6 +55,8 @@ def create_app() -> FastAPI:
         ],
         expose_headers=["X-Request-ID", "Retry-After"],
     )
+    # Slow mobile networks (NFR-02): compress the interface bundle and JSON responses.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     errors.install(app)
 
     @app.middleware("http")
@@ -91,6 +95,16 @@ def create_app() -> FastAPI:
     return app
 
 
+class _ImmutableStatic(StaticFiles):
+    """Bundles carry a content hash in their name, so browsers may keep them for a year."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 def _mount_frontend(app: FastAPI, dist: Path) -> None:
     """Serve the single-page interface built by `npm run build` (frontend/dist)."""
     index = dist / "index.html"
@@ -99,10 +113,10 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
         return
     assets = dist / "assets"
     if assets.exists():
-        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+        app.mount("/assets", _ImmutableStatic(directory=assets), name="assets")
     root = dist.resolve()
 
-    @app.get("/{full_path:path}", include_in_schema=False)
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     async def spa(full_path: str, request: Request) -> Response:
         if full_path.startswith("api/"):
             return errors.problem(request, 404, "not-found", "Not found.")

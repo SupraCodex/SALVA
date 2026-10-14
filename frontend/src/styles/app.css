@@ -1,11 +1,9 @@
-/* SALVA interface.
-   Palette: a field-office green for structure and the ripening scale (green, amber, tomato red)
-   reserved for risk. The P10-P90 band with its P50 tick is the one recurring visual motif. */
+/* SALVA interface styles. Risk colours (green, amber, red) are used for risk only. */
 
 :root {
   --ink: #18241e;
   --ink-2: #4b5a52;
-  --ink-3: #6d7b73;
+  --ink-3: #5c6a62;
   --paper: #eef2ee;
   --surface: #ffffff;
   --surface-2: #f6f8f5;
@@ -23,9 +21,9 @@
   --ripe-red-bg: #f9e2dd;
 
   --tone-a: #3d6a8a;
-  --tone-b: #2c8378;
+  --tone-b: #22716a;
   --tone-c: #6a5aa3;
-  --tone-d: #b06a22;
+  --tone-d: #95561a;
   --tone-e: #173d2f;
   --tone-x: #a3aaa5;
 
@@ -459,6 +457,7 @@ ol {
 }
 .link-button {
   font: inherit;
+  text-align: left;
   background: none;
   border: 0;
   padding: 0;
@@ -798,7 +797,7 @@ ol {
   flex: none;
 }
 
-/* ---------- risk gauge: the signature band ---------- */
+/* ---------- risk gauge ---------- */
 
 .gauge {
   margin: 0;
@@ -1004,7 +1003,7 @@ ol {
   padding: 16px;
 }
 
-/* Steps: a real sequence, so it is numbered. */
+/* Lot steps */
 .steps ol {
   list-style: none;
   margin: 0;
@@ -1172,7 +1171,7 @@ ol {
   gap: 4px;
 }
 
-/* Comparison chart: same band + tick motif on one shared value axis. */
+/* Comparison chart */
 .chart {
   margin: 0;
   display: grid;
@@ -1410,7 +1409,7 @@ ol {
   margin: 0;
 }
 .banner--low {
-  background: #4a5b52;
+  background: #3e4d45;
 }
 .banner--none {
   background: var(--surface);
@@ -1491,6 +1490,71 @@ ol {
   gap: 4px;
 }
 
+.banner__impact {
+  font-weight: 600;
+  border-left: 3px solid var(--ripe-amber);
+  padding-left: 10px;
+}
+.banner--none .banner__impact {
+  border-left-color: var(--forest);
+}
+
+.ask__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.ask__form .field {
+  flex: 1 1 260px;
+}
+.ask__history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ask__history li {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.ask__question {
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.ask__answer {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.market-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.market-row__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: end;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.market-list li:last-child .market-row__form {
+  border-bottom: 0;
+}
+.market-row__name {
+  display: grid;
+  gap: 2px;
+  align-self: center;
+}
+.market-row__form .field__error {
+  grid-column: 1 / -1;
+}
+
 /* ---------- history ---------- */
 
 .timeline {
@@ -1537,6 +1601,7 @@ ol {
 }
 .table {
   width: 100%;
+  min-width: 460px;
   border-collapse: collapse;
   font-size: 0.9375rem;
 }
@@ -1678,6 +1743,12 @@ ol {
 }
 
 @media (max-width: 860px) {
+  .market-row__form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .market-row__name {
+    grid-column: 1 / -1;
+  }
   .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto 1fr;
@@ -1790,6 +1861,13 @@ ol {
   .next-step .button,
   .form-actions .button {
     width: 100%;
+  }
+  .next-step .row-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .market-row__form {
+    grid-template-columns: minmax(0, 1fr);
   }
   .segmented__options {
     display: grid;

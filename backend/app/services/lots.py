@@ -142,7 +142,7 @@ def to_out(db: Session, lot: Lot) -> LotOut:
     )
 
 
-def preview_enrichment(db: Session, data: EnrichmentIn) -> EnrichmentOut:
+def preview_enrichment(db: Session, org_id: uuid.UUID, data: EnrichmentIn) -> EnrichmentOut:
     origin = ref_repo.location(db, data.origin_location_id)
     if origin is None:
         raise field_error("origin_location_id", "unknown", "unknown departure place")
@@ -153,6 +153,7 @@ def preview_enrichment(db: Session, data: EnrichmentIn) -> EnrichmentOut:
     suggested = data.harvested_at + timedelta(hours=leg.hours) if leg.hours > 0 else None
     end = data.eta_current_at or suggested or data.harvested_at + timedelta(hours=24)
     temp = enrichment.temperature_for(origin, market, data.harvested_at, max(end, utcnow()), None)
+    price = enrichment.market_price(market, ref_repo.market_setting(db, org_id, market.id))
     return build(
         EnrichmentOut,
         temperature={"value": temp.mean.value, "source": temp.mean.source},
@@ -163,9 +164,6 @@ def preview_enrichment(db: Session, data: EnrichmentIn) -> EnrichmentOut:
         },
         route_km={"value": leg.km, "source": leg.source},
         route_hours={"value": leg.hours, "source": leg.source},
-        price_fcfa_kg={
-            "value": market.ref_price_fcfa_kg,
-            "source": f"reference: {market.assumption_note}",
-        },
+        price_fcfa_kg={"value": price.value, "source": price.source},
         suggested_eta_at=suggested,
     )
