@@ -94,6 +94,9 @@ Run `./scripts/warmup.sh https://<service-name>.onrender.com` a few minutes befo
 
 | Symptom | Cause and fix |
 |---|---|
+| The page "Service waking up" comes back for minutes, the service restarts again and again | the container stops at start-up, almost always because environment variables are missing (a service that was deleted and created again starts with none). Open **Logs**: a line `PREFLIGHT ERROR: ...` names the problem. Enter every variable of step 2.3 again (same Neon `DATABASE_URL`, `ALLOWED_ORIGINS` with the new URL), set the Health Check Path, then **Manual Deploy > Deploy latest commit** |
+| `PREFLIGHT ERROR: DATABASE_URL is not set` | `DATABASE_URL` is missing; paste the Neon connection string |
+| `PREFLIGHT ERROR: cannot connect to the database` | the Neon string is wrong or incomplete (copy it again, pooling off), or the Neon project was deleted |
 | Deploy fails with `JWT_SECRET must be set...` | `ENV=production` without a 32+ character `JWT_SECRET` |
 | `/api/v1/health` returns 503 `database: down` | wrong `DATABASE_URL`, or the Neon project was deleted; copy the string again |
 | Signed out after every page reload | the site is opened over plain HTTP or another domain; use the `https://...onrender.com` URL |
