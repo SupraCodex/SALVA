@@ -28,7 +28,7 @@ Python science library, plus an offline training pipeline.
    ml/ (offline): generate -> validate -> split -> train ->
    evaluate (GO/NO-GO) -> package -> register (ml/artifacts/active.json)
 
- PostgreSQL: organizations, users, refresh tokens, locations, markets, storage sites,
+ PostgreSQL: organizations, users, refresh tokens, locations, markets, market settings, storage sites,
  lots, analyses, simulation runs, scenarios, recommendations, explanations, outcomes,
  audit log (Alembic migrations).
 ```
@@ -54,7 +54,11 @@ Python science library, plus an offline training pipeline.
    from the facts, forbidden certainty wording, a wrong recommended option, the wrong language
    or markup. A template explanation is always computed and used whenever the provider is
    absent, fails or is rejected.
-5. `POST /api/v1/lots/{id}/outcomes`: the decision taken and later the real result.
+5. `POST /api/v1/analyses/{id}/questions`: rules recognise the question; "what if" changes
+   (delay, temperature, packaging, maturity) are simulated with the stored run's options and seed
+   and not saved; other answers are built from stored results. The text never reaches a
+   language model.
+6. `POST /api/v1/lots/{id}/outcomes`: the decision taken and later the real result.
 
 ## Why this shape
 
@@ -63,7 +67,8 @@ Python science library, plus an offline training pipeline.
 - One process keeps deployment and debugging simple for a small team; `core/` has no web,
   database or network dependency, so it is tested in isolation and reused by `ml/`.
 - The interface is served by the API from `frontend/dist`, so one origin, one cookie scope
-  and a strict Content Security Policy (`script-src 'self'`).
+  and a strict Content Security Policy (`script-src 'self'`). Responses are gzip-compressed and
+  hashed bundles are cached for a year.
 
 ## Model registry
 

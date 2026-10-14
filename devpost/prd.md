@@ -43,7 +43,8 @@ P10-P90 band with its central tick is the recurring visual; no external fonts; r
 - Recommendation with confidence and the "no clear winner" state (FR-10).
 - Explanation that cannot invent a number, template fallback, French or English (FR-11 to FR-13).
 - History, decision and result recording (FR-14, FR-15).
-- Administration of storage sites and users (FR-20, partial: markets are reference data).
+- Questions about an analysis answered only from its facts; "what if" questions simulated (FR-18).
+- Administration of storage sites, users and the organization's market prices and absorption (FR-20).
 - Accounts per organization (FR-21); permanent "model-based estimate, not a guarantee" notice
   with a link to the assumptions (FR-22).
 
@@ -66,13 +67,11 @@ Everything in the core journey above, deployed as one web application with a Pos
 database, documented and tested.
 
 ## Deferred From the POC
-- Questions about an analysis (FR-18): needs a second validated language-model flow.
-- Market management by administrators: markets are shared reference data for now.
 - Password reset and e-mail verification.
 
 ## Possible Later Enhancements
 Other products by configuration, live truck position, multi-lot optimization, field calibration
-from recorded outcomes.
+from recorded outcomes, free-form questions interpreted by a language model.
 
 ## Non-Goals
 - Food-safety judgement: SALVA estimates commercial value, not edibility.

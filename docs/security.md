@@ -12,13 +12,13 @@ issue.
 | Sessions | JWT access token (15 min) kept in memory by the interface; opaque 256-bit refresh token in an HttpOnly, SameSite=Strict cookie scoped to `/api/v1/auth`, stored hashed, rotated on every use; reuse of a rotated token revokes the whole family | `services/auth.py`, `api/v1/auth.py` |
 | CSRF | Cookie used only on `/auth/refresh` and `/auth/logout`, which also require the `X-Requested-With: SALVA` header | `api/v1/auth.py` |
 | Tenancy | Every query on lots, analyses, storage sites and users is filtered by the caller's organization; other organizations' identifiers answer 404 | services and repositories |
-| Roles | `admin` manages storage sites and users; `operator` works on lots | `deps.require_admin` |
+| Roles | `admin` manages storage sites, market values and users; `operator` works on lots | `deps.require_admin` |
 | Rate limits | Sign-in/registration 10/min per IP, session refresh 60/min per IP, computations 60/h and explanations 30/h per user, `429` with `Retry-After` | `rate_limit.py`, `deps.py` |
 | Input | Strict Pydantic schemas (unknown fields refused), bounded numbers and strings, 64 KiB body limit (`413`), errors as `application/problem+json` without stack traces | `schemas/`, `errors.py`, `main.py` |
 | Headers | CSP `default-src 'self'` without inline scripts, `frame-ancestors 'none'`, `X-Content-Type-Options`, `Referrer-Policy`, `no-store` on API responses | `main.py` |
-| Language model | Only computed facts are sent (lot notes never are); the output is validated (numbers, forbidden wording, decision, language, markup) and replaced by the template text when rejected; rejections are audited | `llm/`, `services/explanation.py` |
+| Language model | Only computed facts are sent (lot notes and user questions never are); the output is validated (numbers, forbidden wording, decision, language, markup) and replaced by the template text when rejected; rejections are audited | `llm/`, `services/explanation.py` |
 | Secrets | Read from the environment only; production refuses the development JWT secret and a `*` CORS origin; `.env` is ignored by git; CI scans the history with gitleaks and audits Python dependencies with pip-audit | `config.py`, `.github/workflows/ci.yml` |
-| Audit | Registration, sign-in, sign-out, refresh-token reuse, user and storage-site changes, lot creation and edits, recorded outcomes, rejected explanations | `services/audit.py` |
+| Audit | Registration, sign-in, sign-out, refresh-token reuse, user, storage-site and market-value changes, lot creation and edits, recorded outcomes, rejected explanations | `services/audit.py` |
 
 ## Not done (needed before a real production use)
 
