@@ -131,7 +131,7 @@ def test_admin_market_value_is_used_in_the_form(page: Page):
     """FR-20: the organization's price for a market replaces the reference price."""
     register(page)
     page.goto(f"{BASE_URL}/admin")
-    row = page.locator(".market-row", has_text="Marche Mboppi")
+    row = page.locator(".market-row", has_text="Marché Mboppi")
     row.get_by_label("Your price (FCFA/kg)").fill("640")
     row.get_by_role("button", name="Save").click()
     expect(page.get_by_text("Market values saved.")).to_be_visible()

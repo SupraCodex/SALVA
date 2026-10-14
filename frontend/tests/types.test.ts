@@ -6,7 +6,7 @@ import { marketAbsorption, marketPrice, type Market } from "../src/lib/types.ts"
 const base: Market = {
   id: "m",
   code: "M01",
-  name: "Marche Mboppi",
+  name: "Marché Mboppi",
   city: "Douala",
   location_id: "l",
   ref_price_fcfa_kg: 600,
