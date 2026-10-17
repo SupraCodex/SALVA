@@ -20,7 +20,9 @@ def params():
 
 
 def make(cfg, params, seed=1, n_lots=30, rows=20):
-    return generate.generate_dataset(cfg, params, n_lots=n_lots, rows_per_lot=rows, seed=seed)
+    return generate.generate_dataset(
+        cfg, params, n_lots=n_lots, rows_per_lot=rows, seed=seed
+    )
 
 
 def test_same_seed_same_dataset(cfg, params):
@@ -42,7 +44,10 @@ def test_no_nan_inf_and_bounds(cfg, params):
     num = df.select_dtypes("number")
     assert np.isfinite(num.to_numpy()).all()
     assert df["loss"].between(0, 1).all()
-    assert df["hidden_mean_quality"].between(0, 1, inclusive="right").all() and (df["hidden_mean_quality"] > 0).all()
+    assert (
+        df["hidden_mean_quality"].between(0, 1, inclusive="right").all()
+        and (df["hidden_mean_quality"] > 0).all()
+    )
     assert (df["age_h"] >= 0).all() and (df["remaining_transit_h"] >= 0).all()
 
 
@@ -54,7 +59,9 @@ def test_hidden_columns_are_not_features():
 def test_lot_rows_share_lot_level_attributes(cfg, params):
     df = make(cfg, params)
     g = df.groupby("lot_id")
-    assert (g["maturity"].nunique() == 1).all() and (g["packaging"].nunique() == 1).all()
+    assert (g["maturity"].nunique() == 1).all() and (
+        g["packaging"].nunique() == 1
+    ).all()
     assert (g["hidden_u"].nunique() == 1).all()
 
 
@@ -68,7 +75,14 @@ def test_all_categories_covered(cfg, params):
 def test_metadata_traceability(small_dataset):
     df, meta = load_dataset(small_dataset)
     assert meta["DATA_TYPE"] == "SYNTHETIC" and meta["GENERATOR"] == "KINETIC MODEL"
-    for key in ("SEED", "VERSION", "dataset_hash", "products_yaml_sha256", "config_sha256", "feature_schema_hash"):
+    for key in (
+        "SEED",
+        "VERSION",
+        "dataset_hash",
+        "products_yaml_sha256",
+        "config_sha256",
+        "feature_schema_hash",
+    ):
         assert key in meta
     assert meta["n_rows"] == len(df)
 

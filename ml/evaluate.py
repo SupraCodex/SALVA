@@ -36,7 +36,9 @@ def git_integrity(path: Path) -> dict[str, Any]:
     root = repo_root()
 
     def git(*args: str) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
+        return subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+        )
 
     try:
         rel = str(path.resolve().relative_to(root.resolve()))
@@ -55,10 +57,14 @@ def git_integrity(path: Path) -> dict[str, Any]:
 def load_candidate(run_dir: Path) -> LightGbmLossModel:
     log = json.loads((run_dir / "train_log.json").read_text())
     models = joblib.load(run_dir / "models.joblib")
-    return LightGbmLossModel(models, load_product(), version=log["model_version"], metadata=log)
+    return LightGbmLossModel(
+        models, load_product(), version=log["model_version"], metadata=log
+    )
 
 
-def shap_importance(model: LightGbmLossModel, df, n: int = 2000, seed: int = 0) -> dict[str, float]:
+def shap_importance(
+    model: LightGbmLossModel, df, n: int = 2000, seed: int = 0
+) -> dict[str, float]:
     sub = df.sample(n=min(n, len(df)), random_state=seed)
     contrib = model.shap_contributions(M.features_from_frame(sub))[:, :-1]
     mean_abs = np.mean(np.abs(contrib), axis=0)
@@ -66,35 +72,71 @@ def shap_importance(model: LightGbmLossModel, df, n: int = 2000, seed: int = 0) 
     return {c: float(v / total) for c, v in zip(F.MODEL_COLUMNS, mean_abs, strict=True)}
 
 
-def evaluate_go_nogo(m: dict[str, Any], gate: dict[str, Any], integrity: dict[str, Any]) -> dict[str, Any]:
+def evaluate_go_nogo(
+    m: dict[str, Any], gate: dict[str, Any], integrity: dict[str, Any]
+) -> dict[str, Any]:
     c = gate["criteria"]
     res: dict[str, Any] = {}
 
-    def add(name: str, value: float | None, passed: bool, rule: str, note: str = "") -> None:
+    def add(
+        name: str, value: float | None, passed: bool, rule: str, note: str = ""
+    ) -> None:
         res[name] = {"value": value, "rule": rule, "passed": bool(passed), "note": note}
 
     v = m["fidelity_test"]["mae_p50"]
-    add("p50_fidelity_mae", v, v < c["p50_fidelity_mae"]["max"], f"< {c['p50_fidelity_mae']['max']}")
+    add(
+        "p50_fidelity_mae",
+        v,
+        v < c["p50_fidelity_mae"]["max"],
+        f"< {c['p50_fidelity_mae']['max']}",
+    )
     v = m["candidate_test"]["coverage_p10_p90"]
     lo, hi = c["coverage_p10_p90"]["min"], c["coverage_p10_p90"]["max"]
     ci = m["coverage_ci_test"]
-    add("coverage_p10_p90", v, lo <= v <= hi, f"in [{lo}, {hi}]",
+    add(
+        "coverage_p10_p90",
+        v,
+        lo <= v <= hi,
+        f"in [{lo}, {hi}]",
         f"95% CI over lots [{ci['ci95_low']:.3f}, {ci['ci95_high']:.3f}]; "
-        f"kinetic reference (perfect model) = {m['baseline_test']['coverage_p10_p90']:.3f}")
+        f"kinetic reference (perfect model) = {m['baseline_test']['coverage_p10_p90']:.3f}",
+    )
     v = m["monotonicity"]["total_violations"]
-    add("monotonicity_violations", v, v <= c["monotonicity_violations"]["max"], f"<= {c['monotonicity_violations']['max']}")
+    add(
+        "monotonicity_violations",
+        v,
+        v <= c["monotonicity_violations"]["max"],
+        f"<= {c['monotonicity_violations']['max']}",
+    )
     d = m["decision_agreement"]
     if d["status"] == "EVALUATED":
-        add("decision_agreement", d["agreement"], d["agreement"] >= c["decision_agreement"]["min"],
-            f">= {c['decision_agreement']['min']}")
+        add(
+            "decision_agreement",
+            d["agreement"],
+            d["agreement"] >= c["decision_agreement"]["min"],
+            f">= {c['decision_agreement']['min']}",
+        )
     else:
-        add("decision_agreement", None, False, f">= {c['decision_agreement']['min']}",
-            f"NOT EVALUATED: {d.get('reason', 'unknown')}")
+        add(
+            "decision_agreement",
+            None,
+            False,
+            f">= {c['decision_agreement']['min']}",
+            f"NOT EVALUATED: {d.get('reason', 'unknown')}",
+        )
     v = m["latency"]["median_ms"]
-    add("latency_ms_10k_rows", v, v < c["latency_ms_10k_rows"]["max"], f"< {c['latency_ms_10k_rows']['max']} ms")
+    add(
+        "latency_ms_10k_rows",
+        v,
+        v < c["latency_ms_10k_rows"]["max"],
+        f"< {c['latency_ms_10k_rows']['max']} ms",
+    )
 
     failed = [k for k, r in res.items() if not r["passed"]]
-    reasons = [f"{k}: {res[k]['value']} (required {res[k]['rule']}) {res[k]['note']}".strip() for k in failed]
+    reasons = [
+        f"{k}: {res[k]['value']} (required {res[k]['rule']}) {res[k]['note']}".strip()
+        for k in failed
+    ]
     if integrity["status"] not in ("OK", "UNKNOWN"):
         reasons.append(f"integrity: thresholds file status = {integrity['status']}")
     go = not failed and integrity["status"] in ("OK", "UNKNOWN")
@@ -107,8 +149,14 @@ def evaluate_go_nogo(m: dict[str, Any], gate: dict[str, Any], integrity: dict[st
     }
 
 
-def evaluate(run_dir: Path | str, split_dir: Path | str, config: Path | str | None = None, *,
-             decide: DA.DecisionFn | None = None, gate_path: Path | None = None) -> dict[str, Any]:
+def evaluate(
+    run_dir: Path | str,
+    split_dir: Path | str,
+    config: Path | str | None = None,
+    *,
+    decide: DA.DecisionFn | None = None,
+    gate_path: Path | None = None,
+) -> dict[str, Any]:
     cfg = load_config(config)
     gate_path = gate_path or GATE_PATH
     gate = load_yaml(gate_path)
@@ -123,8 +171,14 @@ def evaluate(run_dir: Path | str, split_dir: Path | str, config: Path | str | No
     f_test = M.features_from_frame(test)
     d_test = cand.predict(f_test)
     try:
-        dec = DA.compute(kin, cand, params, n_scenarios=gate["decision_agreement"]["n_scenarios"],
-                         seed=gate["decision_agreement"]["seed"], decide=decide)
+        dec = DA.compute(
+            kin,
+            cand,
+            params,
+            n_scenarios=gate["decision_agreement"]["n_scenarios"],
+            seed=gate["decision_agreement"]["seed"],
+            decide=decide,
+        )
     except DA.DecisionUnavailable as exc:
         dec = {"status": "NOT_EVALUATED", "reason": str(exc)}
 
@@ -138,22 +192,38 @@ def evaluate(run_dir: Path | str, split_dir: Path | str, config: Path | str | No
         "baseline_test": M.distribution_metrics(kin, test),
         "baseline_extrapolated": M.distribution_metrics(kin, extra),
         "coverage_ci_test": M.coverage_by_lot_ci(test, d_test.p10, d_test.p90),
-        "monotonicity": M.monotonicity_violations(cand, params, test, gate["monotonicity"]),
-        "monotonicity_baseline": M.monotonicity_violations(kin, params, test, gate["monotonicity"]),
-        "latency": M.latency_ms(cand, test, gate["latency"]["n_rows"], gate["latency"]["repeats"]),
-        "latency_baseline": M.latency_ms(kin, test, gate["latency"]["n_rows"], gate["latency"]["repeats"]),
-        "pairwise_ordering_proxy": M.pairwise_ordering_agreement(cand, kin, params, test),
+        "monotonicity": M.monotonicity_violations(
+            cand, params, test, gate["monotonicity"]
+        ),
+        "monotonicity_baseline": M.monotonicity_violations(
+            kin, params, test, gate["monotonicity"]
+        ),
+        "latency": M.latency_ms(
+            cand, test, gate["latency"]["n_rows"], gate["latency"]["repeats"]
+        ),
+        "latency_baseline": M.latency_ms(
+            kin, test, gate["latency"]["n_rows"], gate["latency"]["repeats"]
+        ),
+        "pairwise_ordering_proxy": M.pairwise_ordering_agreement(
+            cand, kin, params, test
+        ),
         "decision_agreement": dec,
         "shap_importance_p50": shap_importance(cand, test),
     }
     integrity = git_integrity(gate_path)
     verdict = evaluate_go_nogo(m, gate, integrity)
     return {
-        "model_version": cand.version, "dataset_id": log["dataset_id"], "dataset_hash": log["dataset_hash"],
-        "seed": log["seed"], "train_mode": log.get("mode"), "data_type": "SYNTHETIC",
+        "model_version": cand.version,
+        "dataset_id": log["dataset_id"],
+        "dataset_hash": log["dataset_hash"],
+        "seed": log["seed"],
+        "train_mode": log.get("mode"),
+        "data_type": "SYNTHETIC",
         "real_world_validation": "NOT PERFORMED",
-        "thresholds_sha256": sha256_file(gate_path), "thresholds_integrity": integrity,
-        "metrics": m, "go_nogo": verdict,
+        "thresholds_sha256": sha256_file(gate_path),
+        "thresholds_integrity": integrity,
+        "metrics": m,
+        "go_nogo": verdict,
     }
 
 
@@ -194,30 +264,57 @@ def render_report(r: dict[str, Any]) -> str:
         f"  LightGBM: P50 MAE vs realised {t['mae_p50_vs_realised']:.4f} | coverage {t['coverage_p10_p90']:.3f} | mean pinball {t['pinball_mean']:.5f}",
         "",
         "Extrapolation set (temperature > 34 or age > 96 h; reported, NOT part of the verdict)",
-        (f"  fidelity P50 MAE {m['fidelity_extrapolated']['mae_p50']:.4f} (max {m['fidelity_extrapolated']['max_abs_p50']:.3f}) | "
-        f"coverage {m['candidate_extrapolated']['coverage_p10_p90']:.3f} | kinetic coverage {m['baseline_extrapolated']['coverage_p10_p90']:.3f}"),
+        (
+            f"  fidelity P50 MAE {m['fidelity_extrapolated']['mae_p50']:.4f} (max {m['fidelity_extrapolated']['max_abs_p50']:.3f}) | "
+            f"coverage {m['candidate_extrapolated']['coverage_p10_p90']:.3f} | kinetic coverage {m['baseline_extrapolated']['coverage_p10_p90']:.3f}"
+        ),
         "",
-        (f"Pairwise ordering proxy (informational): agreement {m['pairwise_ordering_proxy']['agreement']:.3f} "
-        f"on {m['pairwise_ordering_proxy']['pairs_used']} pairs"),
+        (
+            f"Pairwise ordering proxy (informational): agreement {m['pairwise_ordering_proxy']['agreement']:.3f} "
+            f"on {m['pairwise_ordering_proxy']['pairs_used']} pairs"
+        ),
         "Global SHAP importance of the P50 model (share): "
-        + ", ".join(f"{k}={v:.2f}" for k, v in sorted(m['shap_importance_p50'].items(), key=lambda kv: -kv[1])[:5]),
+        + ", ".join(
+            f"{k}={v:.2f}"
+            for k, v in sorted(m["shap_importance_p50"].items(), key=lambda kv: -kv[1])[
+                :5
+            ]
+        ),
     ]
     return "\n".join(lines) + "\n"
 
 
-def run(run_dir: Path | str, split_dir: Path | str, config: Path | str | None = None,
-        out_dir: Path | str | None = None) -> Path:
+def run(
+    run_dir: Path | str,
+    split_dir: Path | str,
+    config: Path | str | None = None,
+    out_dir: Path | str | None = None,
+) -> Path:
     r = evaluate(run_dir, split_dir, config)
     folder = Path(out_dir) if out_dir else REPORTS_DIR / r["model_version"]
     folder.mkdir(parents=True, exist_ok=True)
     write_json(folder / "metrics.json", r)
-    write_json(folder / "go_nogo.json", {k: r[k] for k in ("model_version", "dataset_id", "seed", "go_nogo", "thresholds_sha256")})
+    write_json(
+        folder / "go_nogo.json",
+        {
+            k: r[k]
+            for k in (
+                "model_version",
+                "dataset_id",
+                "seed",
+                "go_nogo",
+                "thresholds_sha256",
+            )
+        },
+    )
     (folder / "report.md").write_text(render_report(r))
     return folder
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="Evaluate LightGBM vs kinetic baseline and decide GO/NO-GO")
+    ap = argparse.ArgumentParser(
+        description="Evaluate LightGBM vs kinetic baseline and decide GO/NO-GO"
+    )
     ap.add_argument("--run", required=True)
     ap.add_argument("--split", required=True)
     ap.add_argument("--config", default=None)

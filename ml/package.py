@@ -26,13 +26,20 @@ from .config import ARTIFACTS_DIR, write_json
 
 def _git_commit() -> str:
     try:
-        out = subprocess.run(["git", "-C", str(repo_root()), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
+        out = subprocess.run(
+            ["git", "-C", str(repo_root()), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         return out.stdout.strip() or "unknown"
     except OSError:
         return "unknown"
 
 
-def package(run_dir: Path | str, report_dir: Path | str, out_root: Path | str | None = None) -> Path:
+def package(
+    run_dir: Path | str, report_dir: Path | str, out_root: Path | str | None = None
+) -> Path:
     run_dir, report_dir = Path(run_dir), Path(report_dir)
     log = json.loads((run_dir / "train_log.json").read_text())
     report = json.loads((report_dir / "metrics.json").read_text())
@@ -49,15 +56,30 @@ def package(run_dir: Path | str, report_dir: Path | str, out_root: Path | str | 
         "product": "tomato",
         "DATA_TYPE": "SYNTHETIC",
         "real_world_validation": "NOT PERFORMED",
-        "dataset_id": log["dataset_id"], "dataset_hash": log["dataset_hash"],
-        "seed": log["seed"], "train_mode": log.get("mode"),
+        "dataset_id": log["dataset_id"],
+        "dataset_hash": log["dataset_hash"],
+        "seed": log["seed"],
+        "train_mode": log.get("mode"),
         "hyperparameters": log["hyperparameters"],
         "products_yaml_sha256": log["products_yaml_sha256"],
-        "feature_version": F.FEATURE_VERSION, "feature_schema_hash": F.schema_hash(),
-        "feature_columns": list(F.MODEL_COLUMNS), "feature_schema": F.feature_schema(),
-        "loss_includes_chilling_penalty": bool(log.get("loss_includes_chilling_penalty", False)),
+        "feature_version": F.FEATURE_VERSION,
+        "feature_schema_hash": F.schema_hash(),
+        "feature_columns": list(F.MODEL_COLUMNS),
+        "feature_schema": F.feature_schema(),
+        "loss_includes_chilling_penalty": bool(
+            log.get("loss_includes_chilling_penalty", False)
+        ),
         "calibration_ranges": log.get("calibration_ranges", {}),
-        "metrics": {k: report["metrics"][k] for k in ("fidelity_test", "candidate_test", "monotonicity", "latency", "decision_agreement")},
+        "metrics": {
+            k: report["metrics"][k]
+            for k in (
+                "fidelity_test",
+                "candidate_test",
+                "monotonicity",
+                "latency",
+                "decision_agreement",
+            )
+        },
         "go_nogo": report["go_nogo"]["verdict"],
         "go_nogo_reasons": report["go_nogo"]["reasons"],
         "thresholds_sha256": report["thresholds_sha256"],
@@ -70,7 +92,9 @@ def package(run_dir: Path | str, report_dir: Path | str, out_root: Path | str | 
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="Package a trained model for loading by the backend")
+    ap = argparse.ArgumentParser(
+        description="Package a trained model for loading by the backend"
+    )
     ap.add_argument("--run", required=True)
     ap.add_argument("--report", required=True)
     ap.add_argument("--out", default=None)

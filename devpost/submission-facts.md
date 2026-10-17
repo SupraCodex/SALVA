@@ -10,8 +10,8 @@ verified facts and links so the text you write is accurate. Do not paste it as i
 |---|---|
 | Public GitHub repository with an open-source license (MIT) | Repository exists; check it is public before submitting |
 | `devpost/scope.md`, `prd.md`, `spec.md` | Present as drafts; review and approve them with the Skill Pack |
-| Demo video, public on YouTube or Vimeo, under 3 minutes, English or translated | To record (plan: `docs/demo-script.md`) |
-| Project name, description, form fields, exit survey | To write by the team |
+| Demo video, public on YouTube or Vimeo, under 3 minutes, English or translated | Local English backup recorded and checked at `docs/demo/SALVA_demo_en.mp4`; public YouTube/Vimeo upload still required |
+| Project name, description, form fields, exit survey | English draft at `docs/jury/submission-description-en.md`; final Devpost fields still require team review |
 | Free access for judges during judging | Provide a hosted URL or rely on the video plus `docker compose up` |
 | Deadline | 26 October 2026, 5:00 pm US Eastern time (10:00 pm in Cameroon) |
 
@@ -29,7 +29,7 @@ verified facts and links so the text you write is accurate. Do not paste it as i
 - Interface in French and English, works at 360 px width; organizations, roles, storage sites.
 - Questions about an analysis: "what if" questions are simulated by the engine, never answered by
   free text generation.
-- Tests: core, ML pipeline, backend on PostgreSQL, frontend unit tests, eight browser scenarios.
+- Tests actually run in this environment: 170 core tests, 57 ML tests, 108 backend tests on PostgreSQL, 13 frontend tests, and 9 Playwright browser scenarios. Ruff format, Ruff lint and mypy pass after the formatting-only cleanup in the ML pipeline.
 
 ## Facts you must not claim
 

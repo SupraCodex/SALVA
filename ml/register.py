@@ -18,16 +18,26 @@ from .config import ARTIFACTS_DIR, write_json
 ACTIVE_PATH = ARTIFACTS_DIR / "active.json"
 
 
-def register(package_dir: Path | str, report_dir: Path | str, *, promote: bool = False,
-             active_path: Path | str | None = None) -> dict[str, str | None]:
+def register(
+    package_dir: Path | str,
+    report_dir: Path | str,
+    *,
+    promote: bool = False,
+    active_path: Path | str | None = None,
+) -> dict[str, str | None]:
     package_dir, report_dir = Path(package_dir), Path(report_dir)
-    verdict = json.loads((report_dir / "go_nogo.json").read_text())["go_nogo"]["verdict"]
+    verdict = json.loads((report_dir / "go_nogo.json").read_text())["go_nogo"][
+        "verdict"
+    ]
     name = package_dir.name
     path = Path(active_path or ACTIVE_PATH)
     if promote and verdict != "LIGHTGBM GO":
         raise PermissionError(f"Refusing to promote {name}: verdict is {verdict}")
-    cfg = {"production": name if promote else "kinetic", "experimental": None if promote else name,
-           "verdict": verdict}
+    cfg = {
+        "production": name if promote else "kinetic",
+        "experimental": None if promote else name,
+        "verdict": verdict,
+    }
     write_json(path, cfg)
     return cfg
 

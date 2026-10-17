@@ -41,7 +41,9 @@ def test_infinity_is_an_error(df, cfg, params):
 
 def test_loss_out_of_bounds(df, cfg, params):
     df.loc[0, "loss"] = 1.2
-    assert any("outside [0, 1]" in e for e in validate_dataframe(df, params, cfg).errors)
+    assert any(
+        "outside [0, 1]" in e for e in validate_dataframe(df, params, cfg).errors
+    )
 
 
 def test_negative_age(df, cfg, params):
@@ -55,7 +57,11 @@ def test_unknown_category(df, cfg, params):
 
 
 def test_label_not_matching_equations_is_detected(df, cfg, params):
-    df.loc[5, "loss"] = min(df.loc[5, "loss"] + 0.05, 1.0) if df.loc[5, "loss"] < 0.9 else df.loc[5, "loss"] - 0.05
+    df.loc[5, "loss"] = (
+        min(df.loc[5, "loss"] + 0.05, 1.0)
+        if df.loc[5, "loss"] < 0.9
+        else df.loc[5, "loss"] - 0.05
+    )
     assert any("kinetics.py" in e for e in validate_dataframe(df, params, cfg).errors)
 
 

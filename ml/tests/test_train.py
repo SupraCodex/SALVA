@@ -24,18 +24,32 @@ def test_constraints_vector():
         assert mono[F.MODEL_COLUMNS.index(col)] == 1
     for col in ("packaging", "storage_mode"):
         assert mono[F.MODEL_COLUMNS.index(col)] == 0
-    assert {F.MODEL_COLUMNS[i] for i in train.categorical_indices()} == {"packaging", "storage_mode"}
+    assert {F.MODEL_COLUMNS[i] for i in train.categorical_indices()} == {
+        "packaging",
+        "storage_mode",
+    }
 
 
 def test_baseline_written_before_training(small_split, run_dir):
     assert (small_split / "baseline_metrics.json").exists()
     b = json.loads((small_split / "baseline_metrics.json").read_text())
-    assert b["real_world_validation"] == "NOT PERFORMED" and b["monotonicity"]["total_violations"] == 0
+    assert (
+        b["real_world_validation"] == "NOT PERFORMED"
+        and b["monotonicity"]["total_violations"] == 0
+    )
 
 
 def test_training_log_is_complete(run_dir):
     log = json.loads((run_dir / "train_log.json").read_text())
-    for key in ("seed", "dataset_hash", "hyperparameters", "feature_schema_hash", "dependencies", "per_quantile", "mode"):
+    for key in (
+        "seed",
+        "dataset_hash",
+        "hyperparameters",
+        "feature_schema_hash",
+        "dependencies",
+        "per_quantile",
+        "mode",
+    ):
         assert key in log
     assert log["DATA_TYPE"] == "SYNTHETIC"
 
@@ -50,8 +64,14 @@ def test_model_loads_and_follows_contract(run_dir, small_split):
     assert np.all(d.p10 <= d.p50 + 1e-12) and np.all(d.p50 <= d.p90 + 1e-12)
     assert np.all((d.p10 >= 0) & (d.p90 <= 1))
     u = np.linspace(0.01, 0.99, 200)
-    rep = F.assemble(model.params, maturity="breaker", packaging="crate", age_h=np.full(200, 40.0),
-                     remaining_h=np.full(200, 20.0), temp_air_c=np.full(200, 28.0))
+    rep = F.assemble(
+        model.params,
+        maturity="breaker",
+        packaging="crate",
+        age_h=np.full(200, 40.0),
+        remaining_h=np.full(200, 20.0),
+        temp_air_c=np.full(200, 28.0),
+    )
     loss = model.sample_loss(rep, u)
     assert np.all(np.diff(loss) >= -1e-12)
 
@@ -65,7 +85,9 @@ def test_predictions_are_reproducible(small_split, small_config, run_dir, tmp_pa
     assert np.array_equal(a.p50, b.p50) and np.array_equal(a.p90, b.p90)
 
 
-def test_package_roundtrip_and_schema_check(small_split, run_dir, small_config, tmp_path):
+def test_package_roundtrip_and_schema_check(
+    small_split, run_dir, small_config, tmp_path
+):
     from ml import evaluate
 
     gate = tmp_path / "gate.yaml"

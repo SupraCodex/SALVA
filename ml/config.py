@@ -29,7 +29,9 @@ def sha256_file(path: Path | str) -> str:
 
 
 def sha256_json(obj: Any) -> str:
-    return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(obj, sort_keys=True, default=str).encode()
+    ).hexdigest()
 
 
 def write_json(path: Path | str, obj: Any) -> None:

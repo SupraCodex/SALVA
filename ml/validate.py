@@ -47,15 +47,24 @@ class ValidationReport:
         return not self.errors
 
     def to_text(self) -> str:
-        lines = [(f"VALIDATION: {'OK' if self.ok else 'FAILED'} "
-                 f"({len(self.errors)} error(s), {len(self.warnings)} warning(s))")]
+        lines = [
+            (
+                f"VALIDATION: {'OK' if self.ok else 'FAILED'} "
+                f"({len(self.errors)} error(s), {len(self.warnings)} warning(s))"
+            )
+        ]
         lines += [f"  ERROR   {e}" for e in self.errors]
         lines += [f"  WARNING {w}" for w in self.warnings]
         lines += [f"  stat    {k}: {v}" for k, v in self.stats.items()]
         return "\n".join(lines)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"ok": self.ok, "errors": self.errors, "warnings": self.warnings, "stats": self.stats}
+        return {
+            "ok": self.ok,
+            "errors": self.errors,
+            "warnings": self.warnings,
+            "stats": self.stats,
+        }
 
 
 def assert_no_forbidden_features(columns: list[str] | tuple[str, ...]) -> None:
@@ -66,7 +75,9 @@ def assert_no_forbidden_features(columns: list[str] | tuple[str, ...]) -> None:
         raise ValueError(f"Forbidden feature columns (leakage): {bad}")
 
 
-def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, Any]) -> ValidationReport:
+def validate_dataframe(
+    df: pd.DataFrame, params: ProductParams, cfg: dict[str, Any]
+) -> ValidationReport:
     rep = ValidationReport()
     v = cfg.get("validation", {})
     required = ["lot_id", "row_id", TARGET, *F.MODEL_COLUMNS]
@@ -82,7 +93,11 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
         rep.errors.append("empty dataset")
         return rep
 
-    num_cols = [c for c in (*F.NUMERIC_FEATURES, TARGET, *[h for h in HIDDEN_COLUMNS if h in df]) if c in df]
+    num_cols = [
+        c
+        for c in (*F.NUMERIC_FEATURES, TARGET, *[h for h in HIDDEN_COLUMNS if h in df])
+        if c in df
+    ]
     for c in num_cols:
         a = df[c].to_numpy(dtype=float)
         if np.isnan(a).any():
@@ -96,16 +111,25 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
         rep.errors.append("row_id is not unique")
     loss = df[TARGET].to_numpy(float)
     if (loss < 0).any() or (loss > 1).any():
-        rep.errors.append(f"{TARGET} outside [0, 1]: min={loss.min():.4g} max={loss.max():.4g}")
+        rep.errors.append(
+            f"{TARGET} outside [0, 1]: min={loss.min():.4g} max={loss.max():.4g}"
+        )
     if "hidden_mean_quality" in df:
         q = df["hidden_mean_quality"].to_numpy(float)
         if (q <= 0).any() or (q > 1).any():
             rep.errors.append("hidden_mean_quality outside (0, 1]")
-    for c in ("age_h", "remaining_transit_h", "delay_h", "exposure_h", "degree_hours_above_ref"):
+    for c in (
+        "age_h",
+        "remaining_transit_h",
+        "delay_h",
+        "exposure_h",
+        "degree_hours_above_ref",
+    ):
         if (df[c].to_numpy(float) < 0).any():
             rep.errors.append(f"{c}: negative values")
     age, rem, hold, expo = (
-        df[c].to_numpy(float) for c in ("age_h", "remaining_transit_h", "hold_h", "exposure_h")
+        df[c].to_numpy(float)
+        for c in ("age_h", "remaining_transit_h", "hold_h", "exposure_h")
     )
     if not np.allclose(expo, age + rem + hold, atol=1e-6):
         rep.errors.append("exposure_h != age_h + remaining_transit_h + hold_h")
@@ -113,15 +137,22 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
     if (t_max < t_mean - 1e-9).any():
         rep.errors.append("temp_max_c < temp_mean_c")
     if (t_mean < -20).any() or (t_mean > 60).any():
-        rep.errors.append("temp_mean_c outside the physically plausible range [-20, 60] degC")
+        rep.errors.append(
+            "temp_mean_c outside the physically plausible range [-20, 60] degC"
+        )
     # Degree-hours are integrated per phase (history, transit, storage), so they are bounded
     # by the hottest phase. The exact values are re-derived below from the raw inputs.
     dh = df["degree_hours_above_ref"].to_numpy(float)
     if (dh > np.maximum(t_max - params.t_ref_c, 0.0) * expo + 1e-6).any():
-        rep.errors.append("degree_hours_above_ref inconsistent with temp_max_c and exposure_h")
+        rep.errors.append(
+            "degree_hours_above_ref inconsistent with temp_max_c and exposure_h"
+        )
 
-    for col, allowed in (("maturity", params.maturity), ("packaging", params.pack_delta_c),
-                         ("storage_mode", params.storage_temp_offset_c)):
+    for col, allowed in (
+        ("maturity", params.maturity),
+        ("packaging", params.pack_delta_c),
+        ("storage_mode", params.storage_temp_offset_c),
+    ):
         bad = set(df[col].astype(str).unique()) - set(allowed)
         if bad:
             rep.errors.append(f"{col}: unknown values {sorted(bad)}")
@@ -147,30 +178,52 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
             product=params.name,
         )
         feature_err = max(
-            float(np.max(np.abs(np.asarray(getattr(f, c), dtype=float) - df[c].to_numpy(float))))
+            float(
+                np.max(
+                    np.abs(
+                        np.asarray(getattr(f, c), dtype=float) - df[c].to_numpy(float)
+                    )
+                )
+            )
             for c in F.NUMERIC_FEATURES
         )
         rep.stats["max_feature_recompute_error"] = feature_err
         if feature_err > 1e-9:
-            rep.errors.append(f"features do not match salva_core.features (max abs diff {feature_err:.3g})")
+            rep.errors.append(
+                f"features do not match salva_core.features (max abs diff {feature_err:.3g})"
+            )
         k_lot = KineticLossModel(params).lot_multiplier(df["hidden_u"].to_numpy(float))
         _, recomputed = kinetics.quality_and_loss(f, k_lot, params)
         err = float(np.max(np.abs(np.asarray(recomputed) - loss)))
         rep.stats["max_label_recompute_error"] = err
         if err > 1e-9:
-            rep.errors.append(f"labels do not match kinetics.py (max abs diff {err:.3g})")
+            rep.errors.append(
+                f"labels do not match kinetics.py (max abs diff {err:.3g})"
+            )
     else:
-        rep.warnings.append("raw generator inputs absent: feature and label reproducibility not checked")
+        rep.warnings.append(
+            "raw generator inputs absent: feature and label reproducibility not checked"
+        )
 
     # distributions
-    rep.stats.update({
-        "rows": len(df), "lots": int(df["lot_id"].nunique()),
-        "loss_mean": round(float(loss.mean()), 4), "loss_p10": round(float(np.quantile(loss, 0.1)), 4),
-        "loss_p90": round(float(np.quantile(loss, 0.9)), 4),
-        "share_loss_gt_0.99": round(float((loss > 0.99).mean()), 4),
-        "temp_mean_range": [round(float(t_mean.min()), 2), round(float(t_mean.max()), 2)],
-        "exposure_h_range": [round(float(expo.min()), 2), round(float(expo.max()), 2)],
-    })
+    rep.stats.update(
+        {
+            "rows": len(df),
+            "lots": int(df["lot_id"].nunique()),
+            "loss_mean": round(float(loss.mean()), 4),
+            "loss_p10": round(float(np.quantile(loss, 0.1)), 4),
+            "loss_p90": round(float(np.quantile(loss, 0.9)), 4),
+            "share_loss_gt_0.99": round(float((loss > 0.99).mean()), 4),
+            "temp_mean_range": [
+                round(float(t_mean.min()), 2),
+                round(float(t_mean.max()), 2),
+            ],
+            "exposure_h_range": [
+                round(float(expo.min()), 2),
+                round(float(expo.max()), 2),
+            ],
+        }
+    )
     if not v.get("min_loss_mean", 0.0) <= loss.mean() <= v.get("max_loss_mean", 1.0):
         rep.warnings.append(f"mean loss {loss.mean():.3f} outside the expected range")
     if (loss > 0.99).mean() > 0.5:
@@ -187,7 +240,11 @@ def validate_dataframe(df: pd.DataFrame, params: ProductParams, cfg: dict[str, A
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Validate a synthetic dataset")
-    ap.add_argument("--dataset", required=True, help="dataset folder (dataset.parquet + metadata.json)")
+    ap.add_argument(
+        "--dataset",
+        required=True,
+        help="dataset folder (dataset.parquet + metadata.json)",
+    )
     ap.add_argument("--config", default=None)
     ap.add_argument("--report", default=None, help="write the report as JSON")
     a = ap.parse_args(argv)
