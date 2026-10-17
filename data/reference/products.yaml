@@ -174,3 +174,985 @@ tomato:
     delay_h: {min: 0.0, max: 48.0, unit: h}
     hold_h: {min: 0.0, max: 72.0, unit: h}
     exposure_h: {min: 0.0, max: 312.0, unit: h}
+
+# Additional product profiles. Values are explicit starting assumptions and require calibration.
+banana_plantain:
+  label:
+    fr: Banane plantain
+    en: Plantain banana
+  source_note: Initial planning assumptions for plantain banana; calibrate with local
+    cultivar, maturity and field outcomes before operational use.
+  parameters:
+    t_ref_c:
+      value: 20.0
+      unit: degC
+      description: Reference temperature at which k_ref is defined.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    k_ref:
+      value: 0.0022
+      unit: 1/h
+      description: 'Mean quality decay rate at t_ref_c for the ''breaker'' maturity
+        stage (Q = exp(-k*hours)). 0.003 gives Q ~ 0.60 after 168 h at 20 degC.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    q10:
+      value: 2.0
+      unit: dimensionless
+      description: Factor by which the decay rate is multiplied per +10 degC.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_h:
+      value: 0.15
+      unit: dimensionless (log-scale std)
+      description: 'Fruit-to-fruit heterogeneity: individual fruit quality is q_i
+        = Q * exp(sigma_h * eps), eps ~ N(0,1).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_lot:
+      value: 0.25
+      unit: dimensionless (log-scale std)
+      description: 'Lot-to-lot variability of the decay rate: k_lot = exp(sigma_lot
+        * z), z ~ N(0,1) (z = ndtri(u) in the code).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    delta:
+      value: 0.45
+      unit: dimensionless
+      description: 'Price factor applied to quantity exceeding market absorption (used
+        by the simulation engine of P1, kept here as the single product reference
+        file).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    default_diurnal_amp_c:
+      value: 5.0
+      unit: degC
+      description: 'Default half-amplitude of the daily temperature cycle (temp_max_c
+        - temp_mean_c) when the caller provides no maximum temperature.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    shelf_life_loss_threshold:
+      value: 0.25
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    maturity:
+      value:
+        green: 0.6
+        breaker: 1.0
+        ripe: 2.0
+      unit: dimensionless multiplier on k
+      description: Maturity stage multiplier m_mat on the decay rate.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_delta_c:
+      value:
+        crate: 0.0
+        carton: 1.5
+        sack: 2.5
+      unit: degC
+      description: 'Extra product temperature versus air caused by packaging (heat
+        retention, poor ventilation).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_damage:
+      value:
+        crate: 0.03
+        carton: 0.05
+        sack: 0.1
+      unit: fraction of value
+      description: 'Immediate value loss from crushing/handling damage, applied multiplicatively
+        to the value fraction.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    storage_temp_offset_c:
+      value:
+        none: 0.0
+        ambient_shade: -2.0
+        ventilated: -1.0
+        cold_room: -12.0
+      unit: degC
+      description: 'Temperature offset versus transport conditions when the lot is
+        held in a storage site of this type. ''none'' = no storage.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_threshold_c:
+      value:
+        green: 12.0
+        breaker: 12.0
+        ripe: 10.0
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold
+        exposure.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_onset_equivalent_h:
+      value:
+        green: 240.0
+        breaker: 168.0
+        ripe: 96.0
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty
+        starts.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_temperature_scale_c:
+      value: 7.2
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent
+        cold hours.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.00015
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated
+        chilling dose.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    risk_thresholds:
+      value:
+        low_p50_max: 0.1
+        medium_p50_max: 0.25
+        low_width_max: 0.2
+        medium_width_max: 0.35
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty
+        width.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    grades:
+      value:
+      - - 0.8
+        - 1.0
+      - - 0.6
+        - 0.6
+      - - 0.4
+        - 0.3
+      unit: '[quality threshold in (0,1), price multiplier in [0,1]]'
+      description: 'Grade A if q >= 0.80 (price x1.0), B if q >= 0.60 (x0.6), C if
+        q >= 0.40 (x0.3), D below (x0, lost). Thresholds strictly decreasing.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+  valid_ranges:
+    temp_mean_c:
+      min: 0.0
+      max: 50.0
+      unit: degC
+    age_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+  calibration_ranges:
+    temp_mean_c:
+      min: 6.0
+      max: 40.5
+      unit: degC
+    temp_max_c:
+      min: 10.0
+      max: 50.5
+      unit: degC
+    degree_hours_above_ref:
+      min: 0.0
+      max: 6396.0
+      unit: degC*h
+    age_h:
+      min: 0.0
+      max: 168.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 144.0
+      unit: h
+    delay_h:
+      min: 0.0
+      max: 48.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+    exposure_h:
+      min: 0.0
+      max: 312.0
+      unit: h
+mango:
+  label:
+    fr: Mangue
+    en: Mango
+  source_note: Initial planning assumptions for mango; calibrate with local cultivar,
+    maturity and field outcomes before operational use.
+  parameters:
+    t_ref_c:
+      value: 20.0
+      unit: degC
+      description: Reference temperature at which k_ref is defined.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    k_ref:
+      value: 0.0035
+      unit: 1/h
+      description: 'Mean quality decay rate at t_ref_c for the ''breaker'' maturity
+        stage (Q = exp(-k*hours)). 0.003 gives Q ~ 0.60 after 168 h at 20 degC.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    q10:
+      value: 2.3
+      unit: dimensionless
+      description: Factor by which the decay rate is multiplied per +10 degC.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_h:
+      value: 0.15
+      unit: dimensionless (log-scale std)
+      description: 'Fruit-to-fruit heterogeneity: individual fruit quality is q_i
+        = Q * exp(sigma_h * eps), eps ~ N(0,1).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_lot:
+      value: 0.25
+      unit: dimensionless (log-scale std)
+      description: 'Lot-to-lot variability of the decay rate: k_lot = exp(sigma_lot
+        * z), z ~ N(0,1) (z = ndtri(u) in the code).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    delta:
+      value: 0.5
+      unit: dimensionless
+      description: 'Price factor applied to quantity exceeding market absorption (used
+        by the simulation engine of P1, kept here as the single product reference
+        file).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    default_diurnal_amp_c:
+      value: 5.0
+      unit: degC
+      description: 'Default half-amplitude of the daily temperature cycle (temp_max_c
+        - temp_mean_c) when the caller provides no maximum temperature.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    shelf_life_loss_threshold:
+      value: 0.25
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    maturity:
+      value:
+        green: 0.6
+        breaker: 1.0
+        ripe: 2.0
+      unit: dimensionless multiplier on k
+      description: Maturity stage multiplier m_mat on the decay rate.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_delta_c:
+      value:
+        crate: 0.0
+        carton: 1.5
+        sack: 2.5
+      unit: degC
+      description: 'Extra product temperature versus air caused by packaging (heat
+        retention, poor ventilation).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_damage:
+      value:
+        crate: 0.02
+        carton: 0.04
+        sack: 0.09
+      unit: fraction of value
+      description: 'Immediate value loss from crushing/handling damage, applied multiplicatively
+        to the value fraction.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    storage_temp_offset_c:
+      value:
+        none: 0.0
+        ambient_shade: -2.0
+        ventilated: -1.0
+        cold_room: -12.0
+      unit: degC
+      description: 'Temperature offset versus transport conditions when the lot is
+        held in a storage site of this type. ''none'' = no storage.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_threshold_c:
+      value:
+        green: 10.0
+        breaker: 10.0
+        ripe: 8.0
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold
+        exposure.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_onset_equivalent_h:
+      value:
+        green: 240.0
+        breaker: 168.0
+        ripe: 96.0
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty
+        starts.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_temperature_scale_c:
+      value: 7.2
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent
+        cold hours.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.00015
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated
+        chilling dose.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    risk_thresholds:
+      value:
+        low_p50_max: 0.1
+        medium_p50_max: 0.25
+        low_width_max: 0.2
+        medium_width_max: 0.35
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty
+        width.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    grades:
+      value:
+      - - 0.8
+        - 1.0
+      - - 0.6
+        - 0.6
+      - - 0.4
+        - 0.3
+      unit: '[quality threshold in (0,1), price multiplier in [0,1]]'
+      description: 'Grade A if q >= 0.80 (price x1.0), B if q >= 0.60 (x0.6), C if
+        q >= 0.40 (x0.3), D below (x0, lost). Thresholds strictly decreasing.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+  valid_ranges:
+    temp_mean_c:
+      min: 0.0
+      max: 50.0
+      unit: degC
+    age_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+  calibration_ranges:
+    temp_mean_c:
+      min: 6.0
+      max: 40.5
+      unit: degC
+    temp_max_c:
+      min: 10.0
+      max: 50.5
+      unit: degC
+    degree_hours_above_ref:
+      min: 0.0
+      max: 6396.0
+      unit: degC*h
+    age_h:
+      min: 0.0
+      max: 168.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 144.0
+      unit: h
+    delay_h:
+      min: 0.0
+      max: 48.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+    exposure_h:
+      min: 0.0
+      max: 312.0
+      unit: h
+avocado:
+  label:
+    fr: Avocat
+    en: Avocado
+  source_note: Initial planning assumptions for avocado; calibrate with local cultivar,
+    maturity and field outcomes before operational use.
+  parameters:
+    t_ref_c:
+      value: 20.0
+      unit: degC
+      description: Reference temperature at which k_ref is defined.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    k_ref:
+      value: 0.0025
+      unit: 1/h
+      description: 'Mean quality decay rate at t_ref_c for the ''breaker'' maturity
+        stage (Q = exp(-k*hours)). 0.003 gives Q ~ 0.60 after 168 h at 20 degC.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    q10:
+      value: 2.1
+      unit: dimensionless
+      description: Factor by which the decay rate is multiplied per +10 degC.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_h:
+      value: 0.15
+      unit: dimensionless (log-scale std)
+      description: 'Fruit-to-fruit heterogeneity: individual fruit quality is q_i
+        = Q * exp(sigma_h * eps), eps ~ N(0,1).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_lot:
+      value: 0.25
+      unit: dimensionless (log-scale std)
+      description: 'Lot-to-lot variability of the decay rate: k_lot = exp(sigma_lot
+        * z), z ~ N(0,1) (z = ndtri(u) in the code).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    delta:
+      value: 0.48
+      unit: dimensionless
+      description: 'Price factor applied to quantity exceeding market absorption (used
+        by the simulation engine of P1, kept here as the single product reference
+        file).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    default_diurnal_amp_c:
+      value: 5.0
+      unit: degC
+      description: 'Default half-amplitude of the daily temperature cycle (temp_max_c
+        - temp_mean_c) when the caller provides no maximum temperature.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    shelf_life_loss_threshold:
+      value: 0.25
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    maturity:
+      value:
+        green: 0.6
+        breaker: 1.0
+        ripe: 2.0
+      unit: dimensionless multiplier on k
+      description: Maturity stage multiplier m_mat on the decay rate.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_delta_c:
+      value:
+        crate: 0.0
+        carton: 1.5
+        sack: 2.5
+      unit: degC
+      description: 'Extra product temperature versus air caused by packaging (heat
+        retention, poor ventilation).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_damage:
+      value:
+        crate: 0.02
+        carton: 0.04
+        sack: 0.08
+      unit: fraction of value
+      description: 'Immediate value loss from crushing/handling damage, applied multiplicatively
+        to the value fraction.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    storage_temp_offset_c:
+      value:
+        none: 0.0
+        ambient_shade: -2.0
+        ventilated: -1.0
+        cold_room: -12.0
+      unit: degC
+      description: 'Temperature offset versus transport conditions when the lot is
+        held in a storage site of this type. ''none'' = no storage.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_threshold_c:
+      value:
+        green: 7.0
+        breaker: 7.0
+        ripe: 5.0
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold
+        exposure.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_onset_equivalent_h:
+      value:
+        green: 336.0
+        breaker: 240.0
+        ripe: 120.0
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty
+        starts.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_temperature_scale_c:
+      value: 7.2
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent
+        cold hours.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.00015
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated
+        chilling dose.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    risk_thresholds:
+      value:
+        low_p50_max: 0.1
+        medium_p50_max: 0.25
+        low_width_max: 0.2
+        medium_width_max: 0.35
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty
+        width.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    grades:
+      value:
+      - - 0.8
+        - 1.0
+      - - 0.6
+        - 0.6
+      - - 0.4
+        - 0.3
+      unit: '[quality threshold in (0,1), price multiplier in [0,1]]'
+      description: 'Grade A if q >= 0.80 (price x1.0), B if q >= 0.60 (x0.6), C if
+        q >= 0.40 (x0.3), D below (x0, lost). Thresholds strictly decreasing.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+  valid_ranges:
+    temp_mean_c:
+      min: 0.0
+      max: 50.0
+      unit: degC
+    age_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+  calibration_ranges:
+    temp_mean_c:
+      min: 6.0
+      max: 40.5
+      unit: degC
+    temp_max_c:
+      min: 10.0
+      max: 50.5
+      unit: degC
+    degree_hours_above_ref:
+      min: 0.0
+      max: 6396.0
+      unit: degC*h
+    age_h:
+      min: 0.0
+      max: 168.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 144.0
+      unit: h
+    delay_h:
+      min: 0.0
+      max: 48.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+    exposure_h:
+      min: 0.0
+      max: 312.0
+      unit: h
+leafy_greens:
+  label:
+    fr: Légumes-feuilles
+    en: Leafy greens
+  source_note: Initial planning assumptions for leafy greens; calibrate with local
+    varieties, packaging and field outcomes before operational use.
+  parameters:
+    t_ref_c:
+      value: 20.0
+      unit: degC
+      description: Reference temperature at which k_ref is defined.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    k_ref:
+      value: 0.006
+      unit: 1/h
+      description: 'Mean quality decay rate at t_ref_c for the ''breaker'' maturity
+        stage (Q = exp(-k*hours)). 0.003 gives Q ~ 0.60 after 168 h at 20 degC.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    q10:
+      value: 2.0
+      unit: dimensionless
+      description: Factor by which the decay rate is multiplied per +10 degC.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_h:
+      value: 0.15
+      unit: dimensionless (log-scale std)
+      description: 'Fruit-to-fruit heterogeneity: individual fruit quality is q_i
+        = Q * exp(sigma_h * eps), eps ~ N(0,1).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    sigma_lot:
+      value: 0.25
+      unit: dimensionless (log-scale std)
+      description: 'Lot-to-lot variability of the decay rate: k_lot = exp(sigma_lot
+        * z), z ~ N(0,1) (z = ndtri(u) in the code).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    delta:
+      value: 0.4
+      unit: dimensionless
+      description: 'Price factor applied to quantity exceeding market absorption (used
+        by the simulation engine of P1, kept here as the single product reference
+        file).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    default_diurnal_amp_c:
+      value: 5.0
+      unit: degC
+      description: 'Default half-amplitude of the daily temperature cycle (temp_max_c
+        - temp_mean_c) when the caller provides no maximum temperature.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    shelf_life_loss_threshold:
+      value: 0.2
+      unit: fraction of commercial value lost
+      description: Loss fraction at which the remaining shelf-life estimate is exhausted.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    maturity:
+      value:
+        green: 0.5
+        breaker: 1.0
+        ripe: 1.5
+      unit: dimensionless multiplier on k
+      description: Maturity stage multiplier m_mat on the decay rate.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_delta_c:
+      value:
+        crate: 0.0
+        carton: 1.0
+        sack: 2.0
+      unit: degC
+      description: 'Extra product temperature versus air caused by packaging (heat
+        retention, poor ventilation).
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    pack_damage:
+      value:
+        crate: 0.03
+        carton: 0.05
+        sack: 0.12
+      unit: fraction of value
+      description: 'Immediate value loss from crushing/handling damage, applied multiplicatively
+        to the value fraction.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    storage_temp_offset_c:
+      value:
+        none: 0.0
+        ambient_shade: -3.0
+        ventilated: -2.0
+        cold_room: -8.0
+      unit: degC
+      description: 'Temperature offset versus transport conditions when the lot is
+        held in a storage site of this type. ''none'' = no storage.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_threshold_c:
+      value:
+        green: 2.0
+        breaker: 2.0
+        ripe: 2.0
+      unit: degC
+      description: Stage-specific lower temperature boundary used to accumulate cold
+        exposure.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_onset_equivalent_h:
+      value:
+        green: 48.0
+        breaker: 48.0
+        ripe: 48.0
+      unit: equivalent hours at the maturity-specific threshold
+      description: Initial cumulative cold-dose allowance before the value penalty
+        starts.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_temperature_scale_c:
+      value: 4.0
+      unit: degC
+      description: Temperature scale for converting colder exposure into equivalent
+        cold hours.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    chilling_loss_rate_per_equivalent_h:
+      value: 0.0002
+      unit: 1 / equivalent h
+      description: Post-onset exponential fraction-of-value hazard for accumulated
+        chilling dose.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    risk_thresholds:
+      value:
+        low_p50_max: 0.1
+        medium_p50_max: 0.25
+        low_width_max: 0.2
+        medium_width_max: 0.35
+      unit: loss-fraction thresholds
+      description: Product-specific thresholds combining median loss and P10-P90 uncertainty
+        width.
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+    grades:
+      value:
+      - - 0.8
+        - 1.0
+      - - 0.6
+        - 0.6
+      - - 0.4
+        - 0.3
+      unit: '[quality threshold in (0,1), price multiplier in [0,1]]'
+      description: 'Grade A if q >= 0.80 (price x1.0), B if q >= 0.60 (x0.6), C if
+        q >= 0.40 (x0.3), D below (x0, lost). Thresholds strictly decreasing.
+
+        '
+      source: assumption
+      note: Initial planning assumption; calibrate for this product before operational
+        use.
+  valid_ranges:
+    temp_mean_c:
+      min: 0.0
+      max: 50.0
+      unit: degC
+    age_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 720.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+  calibration_ranges:
+    temp_mean_c:
+      min: 6.0
+      max: 40.5
+      unit: degC
+    temp_max_c:
+      min: 10.0
+      max: 50.5
+      unit: degC
+    degree_hours_above_ref:
+      min: 0.0
+      max: 6396.0
+      unit: degC*h
+    age_h:
+      min: 0.0
+      max: 168.0
+      unit: h
+    remaining_transit_h:
+      min: 0.0
+      max: 144.0
+      unit: h
+    delay_h:
+      min: 0.0
+      max: 48.0
+      unit: h
+    hold_h:
+      min: 0.0
+      max: 72.0
+      unit: h
+    exposure_h:
+      min: 0.0
+      max: 312.0
+      unit: h

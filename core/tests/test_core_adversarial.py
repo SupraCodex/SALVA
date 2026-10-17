@@ -29,6 +29,14 @@ def p():
     return load_product("tomato")
 
 
+def test_reference_catalog_contains_operational_product_profiles():
+    products = load_products()
+    assert {"tomato", "banana_plantain", "mango", "avocado", "leafy_greens"} <= set(products)
+    for code in ("banana_plantain", "mango", "avocado", "leafy_greens"):
+        assert products[code].name == code
+        assert products[code].k_ref > 0
+
+
 class ConstantBooster:
     """Small stand-in for LightGBM; records the actual inference matrix."""
 
