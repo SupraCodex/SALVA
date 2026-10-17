@@ -254,6 +254,7 @@ export function NewLot() {
 
   const suggestedEta =
     enrichment?.suggested_eta_at && form.harvested_at ? toLocalInput(enrichment.suggested_eta_at) : null;
+  const availableProducts = products.data;
 
   return (
     <div className="page page--narrow">
@@ -280,7 +281,7 @@ export function NewLot() {
           <Field label={t("form.product")}>
             {(p) => (
               <Select {...p} name="product_code" value={form.product_code} onChange={(e) => set("product_code", e.target.value)}>
-                {products.data.map((product) => (
+                {availableProducts.map((product) => (
                   <option key={product.code} value={product.code}>
                     {lang === "fr" ? product.label_fr : product.label_en}
                   </option>
