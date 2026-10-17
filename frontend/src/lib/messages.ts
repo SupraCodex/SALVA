@@ -3,7 +3,7 @@
 
 export const fr = {
   "app.tagline": "Décidez avant que la perte ne survienne.",
-  "app.disclaimer": "",
+  "app.disclaimer": "Estimation basée sur un modèle, non garantie.",
   "app.disclaimerLink": "Voir les hypothèses",
   "app.skip": "Aller au contenu",
   "nav.dashboard": "Lots",
@@ -33,7 +33,7 @@ export const fr = {
   "auth.organization": "Nom de l'organisation (coopérative, entreprise…)",
   "auth.noAccount": "Pas encore de compte ?",
   "auth.haveAccount": "Déjà un compte ?",
-  "auth.headline": "Votre lot de tomates est en route. Que faire maintenant ?",
+  "auth.headline": "Votre lot est en route. Que faire maintenant ?",
   "auth.pitch": "SALVA estime la valeur que le lot risque de perdre avant la vente, compare les décisions possibles avec leur incertitude et explique la recommandation.",
   "auth.step1Title": "Saisissez le lot",
   "auth.step1Text": "Huit informations. La météo, la durée du trajet et le prix de référence sont complétés automatiquement.",
@@ -76,6 +76,7 @@ export const fr = {
   "lot.route": "{from} → {to}",
 
   "form.title": "Nouveau lot",
+  "form.loading": "Chargement des produits et des lieux de référence…",
   "form.intro": "Huit informations suffisent. La température, la durée du trajet et le prix de référence sont complétés automatiquement.",
   "form.product": "Produit",
   "form.quantity": "Quantité (kg)",
@@ -462,7 +463,7 @@ export const en: Record<MessageKey, string> = {
   "auth.organization": "Organization name (cooperative, company…)",
   "auth.noAccount": "No account yet?",
   "auth.haveAccount": "Already have an account?",
-  "auth.headline": "Your tomatoes are on the road. What should you do now?",
+  "auth.headline": "Your lot is on the road. What should you do now?",
   "auth.pitch": "SALVA estimates how much value the lot may lose before it is sold, compares the possible decisions with their uncertainty and explains the recommendation.",
   "auth.step1Title": "Enter the lot",
   "auth.step1Text": "Eight inputs. Weather, travel time and the reference price are filled in automatically.",
@@ -505,6 +506,7 @@ export const en: Record<MessageKey, string> = {
   "lot.route": "{from} → {to}",
 
   "form.title": "New lot",
+  "form.loading": "Loading products and reference locations…",
   "form.intro": "Eight answers are enough. Temperature, travel time and the reference price are filled in automatically.",
   "form.product": "Product",
   "form.quantity": "Quantity (kg)",

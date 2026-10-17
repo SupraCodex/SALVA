@@ -57,6 +57,13 @@ export interface Market {
   org_absorption_kg_day: number | null;
 }
 
+export interface Product {
+  code: string;
+  label_fr: string;
+  label_en: string;
+  source_note: string;
+}
+
 /** Price and absorption actually used for an organization: its own value, else the reference. */
 export function marketPrice(m: Market): number {
   return m.org_price_fcfa_kg ?? m.ref_price_fcfa_kg;

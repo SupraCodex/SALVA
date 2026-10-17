@@ -7,7 +7,7 @@ import { toApiError, useApi } from "../lib/hooks";
 import { fieldErrors, useI18n } from "../lib/i18n";
 import { useRouter } from "../lib/router";
 import { marketPrice } from "../lib/types";
-import type { Enrichment, Location, Lot, Market, Maturity, Packaging } from "../lib/types";
+import type { Enrichment, Location, Lot, Market, Maturity, Packaging, Product } from "../lib/types";
 
 interface FormState {
   product_code: string;
@@ -81,6 +81,7 @@ export function NewLot() {
   const { navigate, search } = useRouter();
   const locations = useApi<Location[]>("/locations");
   const markets = useApi<Market[]>("/markets");
+  const products = useApi<Product[]>("/products");
   const [form, setForm] = useState<FormState>(() => loadDraft() ?? EMPTY);
   const [restored] = useState(() => loadDraft() !== null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -229,17 +230,24 @@ export function NewLot() {
     }
   };
 
-  if (locations.error || markets.error) {
+  if (locations.error || markets.error || products.error) {
     return (
       <div className="page">
-        <ErrorState error={(locations.error ?? markets.error) as ApiError} onRetry={() => { locations.reload(); markets.reload(); }} />
+        <ErrorState
+          error={(locations.error ?? markets.error ?? products.error) as ApiError}
+          onRetry={() => { locations.reload(); markets.reload(); products.reload(); }}
+        />
       </div>
     );
   }
-  if (!locations.data || !markets.data) {
+  if (!locations.data || !markets.data || !products.data) {
     return (
       <div className="page">
-        <Skeleton lines={6} />
+        <section className="panel panel--loading" aria-busy="true" aria-live="polite">
+          <h1>{t("form.title")}</h1>
+          <p className="muted">{t("form.loading")}</p>
+          <Skeleton lines={6} />
+        </section>
       </div>
     );
   }
@@ -272,7 +280,11 @@ export function NewLot() {
           <Field label={t("form.product")}>
             {(p) => (
               <Select {...p} name="product_code" value={form.product_code} onChange={(e) => set("product_code", e.target.value)}>
-                <option value="tomato">{t("lot.product.tomato")}</option>
+                {products.data.map((product) => (
+                  <option key={product.code} value={product.code}>
+                    {lang === "fr" ? product.label_fr : product.label_en}
+                  </option>
+                ))}
               </Select>
             )}
           </Field>
