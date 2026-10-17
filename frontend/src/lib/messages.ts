@@ -58,6 +58,7 @@ export const fr = {
   "dash.filterClosed": "Clos",
   "dash.notAnalysed": "Pas encore analysé",
   "dash.more": "Afficher plus",
+  "dash.moreLoading": "Chargement…",
   "dash.recommended": "Recommandé : {action}",
   "dash.noWinner": "Pas de gagnant net",
 
@@ -492,6 +493,7 @@ export const en: Record<MessageKey, string> = {
   "dash.filterClosed": "Closed",
   "dash.notAnalysed": "Not analysed yet",
   "dash.more": "Show more",
+  "dash.moreLoading": "Loading…",
   "dash.recommended": "Recommended: {action}",
   "dash.noWinner": "No clear winner",
 

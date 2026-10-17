@@ -58,6 +58,7 @@ export function Dashboard() {
   const [extra, setExtra] = useState<Lot[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [moreError, setMoreError] = useState<string | null>(null);
+  const [moreLoading, setMoreLoading] = useState(false);
 
   const rank = (l: Lot) => (l.status === "open" ? 0 : 1) * 10 + ({ high: 0, medium: 1, low: 2 }[l.latest_analysis?.risk_level ?? "low"] ?? 3);
   const items = [...(list.data?.items ?? []), ...extra].sort((a, b) => rank(a) - rank(b));
@@ -65,13 +66,17 @@ export function Dashboard() {
   const atRisk = items.filter((l) => l.status === "open" && l.latest_analysis?.risk_level === "high");
 
   const loadMore = async () => {
-    if (!next) return;
+    if (!next || moreLoading) return;
+    setMoreLoading(true);
+    setMoreError(null);
     try {
       const page = await api<LotList>(`/lots?limit=20&cursor=${encodeURIComponent(next)}${filter ? `&status=${filter}` : ""}`);
       setExtra((prev) => [...prev, ...page.items]);
       setCursor(page.next_cursor);
     } catch (err) {
       setMoreError(toApiError(err).message);
+    } finally {
+      setMoreLoading(false);
     }
   };
   const changeFilter = (value: Filter) => {
@@ -132,8 +137,8 @@ export function Dashboard() {
           </div>
           <ul className="lot-list">{items.map((lot) => <LotRow key={lot.id} lot={lot} />)}</ul>
           {next && (
-            <button type="button" className="button button--quiet" onClick={loadMore}>
-              {t("dash.more")}
+            <button type="button" className="button button--quiet" onClick={loadMore} disabled={moreLoading} aria-busy={moreLoading}>
+              {moreLoading ? t("dash.moreLoading") : t("dash.more")}
             </button>
           )}
           {moreError && <p className="field__error">{moreError}</p>}

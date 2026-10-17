@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { ErrorState, Field, Input, Notice, Skeleton } from "../components/ui";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { dateTime, fromLocalInput, hours, kg, toLocalInput } from "../lib/format";
 import { toApiError, useApi } from "../lib/hooks";
 import { fieldErrors, useI18n } from "../lib/i18n";
@@ -92,6 +92,8 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [loadingResults, setLoadingResults] = useState(true);
+  const [resultsError, setResultsError] = useState<ApiError | null>(null);
+  const [resultsAttempt, setResultsAttempt] = useState(0);
 
   const latestAnalysisId = lot?.latest_analysis?.id ?? null;
   const latestSimulationId = lot?.latest_analysis?.simulation_id ?? null;
@@ -100,6 +102,7 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
     if (!lot) return;
     let cancelled = false;
     setLoadingResults(true);
+    setResultsError(null);
     (async () => {
       try {
         const a = latestAnalysisId ? await api<Analysis>(`/analyses/${latestAnalysisId}`) : null;
@@ -111,12 +114,14 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
       } finally {
         if (!cancelled) setLoadingResults(false);
       }
-    })().catch(() => undefined);
+    })().catch((err) => {
+      if (!cancelled) setResultsError(toApiError(err));
+    });
     return () => {
       cancelled = true;
     };
     // Reload results only when the latest identifiers change.
-  }, [latestAnalysisId, latestSimulationId, lot === null]);
+  }, [latestAnalysisId, latestSimulationId, lot === null, resultsAttempt]);
 
   const go = useCallback((next: Tab) => navigate(`/lots/${id}/${next}`), [id, navigate]);
 
@@ -223,7 +228,9 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
         </ol>
       </nav>
 
-      {loadingResults && tab !== "history" ? (
+      {resultsError ? (
+        <ErrorState error={resultsError} onRetry={() => setResultsAttempt((attempt) => attempt + 1)} />
+      ) : loadingResults && tab !== "history" ? (
         <Skeleton lines={5} />
       ) : (
         <>
@@ -236,4 +243,3 @@ export function LotHub({ id, tab }: { id: string; tab: Tab }) {
     </div>
   );
 }
-
