@@ -51,6 +51,46 @@ export function LotRow({ lot, to }: { lot: Lot; to?: string }) {
   );
 }
 
+function decisionPriority(lot: Lot): number {
+  const analysis = lot.latest_analysis;
+  if (!analysis) return 0;
+  if (analysis.risk_level === "high") return 1;
+  if (analysis.no_clear_winner || analysis.confidence === "low" || analysis.confidence === "none") return 2;
+  return 3;
+}
+
+function DecisionQueue({ lots }: { lots: Lot[] }) {
+  const { t } = useI18n();
+  const openLots = lots.filter((lot) => lot.status === "open").sort((a, b) => decisionPriority(a) - decisionPriority(b));
+  if (openLots.length === 0) return null;
+  const unanalyzed = openLots.filter((lot) => !lot.latest_analysis).length;
+  const highRisk = openLots.filter((lot) => lot.latest_analysis?.risk_level === "high").length;
+  const uncertain = openLots.filter(
+    (lot) => lot.latest_analysis?.no_clear_winner || lot.latest_analysis?.confidence === "low" || lot.latest_analysis?.confidence === "none",
+  ).length;
+
+  return (
+    <section className="panel decision-queue" aria-labelledby="decision-queue-title">
+      <div className="panel__head">
+        <div>
+          <h2 id="decision-queue-title">{t("dash.queueTitle")}</h2>
+          <p className="muted small">{t("dash.queueIntro", { n: openLots.length })}</p>
+        </div>
+        <span className="badge badge--assumption">{t("dash.queueCount", { n: openLots.length })}</span>
+      </div>
+      <div className="decision-queue__stats" aria-label={t("dash.queueStatsLabel")}>
+        <div><strong>{unanalyzed}</strong><span>{t("dash.queueUnanalysed")}</span></div>
+        <div><strong>{highRisk}</strong><span>{t("dash.queueHighRisk")}</span></div>
+        <div><strong>{uncertain}</strong><span>{t("dash.queueUncertain")}</span></div>
+      </div>
+      <ul className="lot-list decision-queue__list">
+        {openLots.slice(0, 3).map((lot) => <LotRow key={lot.id} lot={lot} />)}
+      </ul>
+      {openLots.length > 3 && <p className="muted small">{t("dash.queueMore", { n: openLots.length - 3 })}</p>}
+    </section>
+  );
+}
+
 export function Dashboard() {
   const { t } = useI18n();
   const [filter, setFilter] = useState<Filter>("");
@@ -117,6 +157,7 @@ export function Dashboard() {
           <p>{t("dash.emptyText")}</p>
         </EmptyState>
       )}
+      {list.data && !filter && <DecisionQueue lots={items} />}
       {(items.length > 0 || filter) && (
         <section className="section">
           <div className="section__head">

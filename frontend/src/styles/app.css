@@ -454,6 +454,39 @@ ol {
   border-top: 3px solid var(--leaf);
 }
 
+.decision-queue {
+  border-top: 3px solid var(--ripe-amber);
+  gap: 14px;
+}
+.decision-queue__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.decision-queue__stats > div {
+  display: grid;
+  gap: 1px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+}
+.decision-queue__stats strong {
+  font-family: var(--font-display);
+  font-size: var(--text-l);
+  line-height: 1.1;
+}
+.decision-queue__stats span {
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+.decision-queue__list {
+  margin-top: 2px;
+}
+.decision-queue > .small:last-child {
+  margin: 0;
+}
+
 .split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
