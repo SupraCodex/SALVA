@@ -2,6 +2,7 @@ import { ErrorState, Notice, Skeleton } from "../components/ui";
 import { fcfa, kg, sig } from "../lib/format";
 import { useApi } from "../lib/hooks";
 import { useI18n } from "../lib/i18n";
+import { useRouter } from "../lib/router";
 import type { Assumptions as AssumptionsData } from "../lib/types";
 
 function show(value: unknown, lang: "fr" | "en"): string {
@@ -18,7 +19,9 @@ function show(value: unknown, lang: "fr" | "en"): string {
 /** Model, parameters, sources and known limits, readable by every role (FR-22). */
 export function Assumptions() {
   const { t, td, lang } = useI18n();
-  const data = useApi<AssumptionsData>("/assumptions");
+  const { search } = useRouter();
+  const productCode = search.get("product") || "tomato";
+  const data = useApi<AssumptionsData>(`/assumptions?product=${encodeURIComponent(productCode)}`);
   if (data.error) {
     return (
       <div className="page">
@@ -40,6 +43,7 @@ export function Assumptions() {
     <div className="page page--reading">
       <h1>{t("assumptions.title")}</h1>
       <p className="lede">{t("assumptions.intro")}</p>
+      <p className="tag">{t(`lot.product.${a.product}` as "lot.product.tomato")}</p>
 
       <section className="panel" aria-labelledby="model-title">
         <h2 id="model-title">{t("assumptions.model")}</h2>

@@ -159,10 +159,10 @@ def update_site(db: Session, caller: Caller, site_id: uuid.UUID, data: StorageSi
     return site
 
 
-def assumptions(db: Session) -> AssumptionsOut:
+def assumptions(db: Session, product_code: str = "tomato") -> AssumptionsOut:
     settings = get_settings()
     doc = engine.products_document()
-    code = "tomato"
+    code = product_code
     p = engine.params(code)
     entries = doc.get(code, {}).get("parameters", {})
     parameters = []

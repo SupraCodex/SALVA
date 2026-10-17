@@ -89,8 +89,12 @@ def route_estimate(
     response_model=AssumptionsOut,
     summary="Model parameters, sources and limits",
 )
-def assumptions(_: Caller = Depends(get_caller), db: Session = Depends(get_db)):
-    return ref_service.assumptions(db)
+def assumptions(
+    product: str = Query(default="tomato", min_length=1, max_length=40),
+    _: Caller = Depends(get_caller),
+    db: Session = Depends(get_db),
+):
+    return ref_service.assumptions(db, product_code=product)
 
 
 @router.get(

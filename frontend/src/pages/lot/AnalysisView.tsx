@@ -134,7 +134,7 @@ export function AnalysisView({ ctx }: { ctx: LotContext }) {
       <div className="next-step">
         {controls}
         <div className="row-actions">
-          <Link to="/assumptions" className="button button--quiet">
+          <Link to={`/assumptions?product=${encodeURIComponent(lot.product_code)}`} className="button button--quiet">
             {t("analysis.seeAssumptions")}
           </Link>
           <button type="button" className="button button--primary" onClick={() => ctx.go("simulation")}>
